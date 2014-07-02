@@ -1,0 +1,34 @@
+ergast - detail
+========================================================
+
+### Ergast Motor Racing Database - Detail
+
+With each table, the Ergast API supports a wide range of filtering options that allow us to obtain different slices of data from the database. In this section, we will review the filtering options that are available and review some of the questions that these options allow us to explore. Note that the questions identified are likely to represent only a fraction of the possible questions we can potentially ask of the API. You are encouraged to explore the API yourself to identify further questions that may be of particular interest to you.
+
+
+#### Season List
+A list of the seasons for which data is available
+
+#### Race Schedule
+The races that took place in each given season
+
+#### Race Results
+The results for each race
+
+#### Qualifying Results
+The results of qualifying for each race weekend
+
+#### Standings
+
+#### Driver Information
+
+
+#### Constructor Information
+
+#### Circuit Information
+
+#### Finishing Status
+
+#### Lap Times ( from the 2011 season onwards)
+
+#### Pit Stops

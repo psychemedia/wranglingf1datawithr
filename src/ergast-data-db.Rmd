@@ -1,0 +1,347 @@
+```{r setup, echo = F}
+opts_chunk$set(fig.path = "images/", echo=FALSE, message=FALSE)
+```
+# Chapter - Getting the data from the Ergast Motor Racing Database Download
+
+
+## Accessing SQLite from R
+
+As well as being made available over the web via a JSON API, Chris Newell also releases the data as a MySQL database export file at the end of each season. 
+
+If you want to use F1 data as a context for learning how to write database queries using SQL, one of the most popular and widely used database query languages, then this download is probably for you...
+
+MySQL is a poweful database that is arguably overkill for our purposes here, but there is another database we can draw on that is quick and easy to use - once we get the data into the right format for it: [SQLite](http://www.sqlite.org/). *For an example of how to generate a SQLite version of the database from the MySQL export, see the appendix.*
+
+*Unfortunately, the recipe I use to generate a SQLite version of the database requires MySQL during the transformation step, which begs the question of why I don't just connect R to MySQL directly. My reasoning is to try to use lightweight database tools where possible, and sqlite offers just such a solution: no database management system is required, just the sqlite database file and the RSQLite library to query into it. On the to do list is to put together a virtual machine (VM) for this book that includes all the tools introduced in this book, including RStudio and MySQL as well as all the required libraries, packages, datasets and scrapers for generatibng your own datasets.*
+
+We can access a SQLite database from R using the [RSQLite package](http://cran.r-project.org/web/packages/RSQLite/index.html) 
+```{r echo=TRUE}
+require(RSQLite)
+
+con_ergastdb = dbConnect(drv='SQLite', dbname='./ergastdb13.sqlite')
+tbs=dbGetQuery(con_ergastdb, 'SELECT name FROM sqlite_master WHERE type = "table"')
+```
+
+Let's see what the tables are:
+
+```{r results='asis'}
+kable(tbs)
+```
+
+If we're feeling adventurous, we could load the whole of the ergast database into memory as a set of R dataframes, one per database table, in a single routine. The dataframes take the name of the corresponding table in the database.
+
+
+```{r echo=TRUE}
+## list all tables
+tables <- dbListTables(con_ergastdb)
+
+## exclude sqlite_sequence (contains table information)
+tables <- tables[tables != "sqlite_sequence"]
+
+lDataFrames <- vector("list", length=length(tables))
+
+for (i in seq(along=tables)) {
+  assign(tables[i],dbGetQuery(conn=con_ergastdb, statement=paste("SELECT * FROM '", tables[[i]], "'", sep="")))
+}
+```
+
+This is the sort of data we can find in the *circuits* table (there is also a column, *not shown*, that contains a link to the Wikipedia page for the circuit. It may be possible to use this to automate a route for pulling in a circuit map from Wikipedia or DBpedia):
+
+```{r results='asis', echo=TRUE}
+kable( head(circuits[,1:7],n=5) )
+```
+
+Alternatively, we might use a package such as RMaps to plot the circuits visited in each season on a world map, perhaps using great circles to to connect the consecutive races to show just how far the race teams travel year on year.
+
+Here's an example of the *constructorResults*:
+
+```{r results='asis'}
+kable( head(constructorResults[,1:4],n=5) )
+```
+
+In and of itself, this is not very interesting - we would probably need to blend this data with a meaningful explanation of the *constructorId* and/or *raceId* from another table. For example, the *constructors* table provides descriptive information about each team. (Note, there is also a column (not shown) that gives the URL for the team's Wikipedia page.):
+
+```{r results='asis'}
+kable(head(constructors[,1:4],n=5),format='markdown')
+```
+
+We might therefore merge the *constructor* and *constructorResults* dataframes using the R *merge()* function:
+
+```{r results='asis'}
+kable(head( merge(constructor[,1:4],constructorResults,by='constructorId'), n=5))
+```
+
+However, we will see later on in this chapter how to join data from two or more tables as part of the same SQL query.
+
+The *constructorStandings* also give information keyed by the *constructorId* and *raceId*:
+
+```{r results='asis'}
+kable( head(constructorStandings,n=5) )
+```
+
+The *driverStandings* table identifies the standings for each driver after each race. It is keyed by *raceId* and *driverId*:
+
+```{r results='asis'}
+kable( head(driverStandings,n=5) )
+```
+
+In order to find the driver standings at the end of a particular race, we need to find the raceId for the corresponding race. This can be doen via the *races* table described below. 
+
+The *drivers* table gives some descriptive information about each driver. Again, there is an additional column (not shown) that contains a link to the driver's Wikipedia page. The three letter code column is particulalry useful as it provides us with a short, recognisable label by means of which we can refer to each driver on many of the charts we'll be producing.
+
+```{r results='asis'}
+kable( head(drivers[,1:7],n=5) )
+```
+
+The *lapTimes* table is one that we shall pull data from extensively. Keyed by *raceId* and *driverId*, it gives the position of the driver at the end of each lap in a race, along with the laptime for that lap in the form *min*:*sec*.*millisec* as well as the laptime in milliseconds.
+
+```{r results='asis'}
+kable( head(lapTimes,n=5) )
+```
+
+The *pitStops* table provides data about the duration of each individual pit stop. The duration is given in seconds/millisecods, as well as the total number of milliseconds. Note that the duration is essentially the sum of the stop time plus the pit loss time. ?What happens if a dirver gets a drive through penalty? Is the pit stop time the time the driver takes between enetering and leaving the pitlane? In whcih case, the pit stop times will also include penalties that involve driving through the pit lane, stop and go penalties, etc.
+
+```{r results='asis'}
+kable( head(pitStops ,n=5) )
+```
+
+The *qualifying* table contains qualifying session times for each driver in each race, along with their position at the end of qualifying.
+
+```{r results='asis'}
+kable( head(qualifying ,n=5) )
+```
+
+The *races* table contains descriptive information about each actual race. (There is an additional column, not shown, that contains the URL for the Wikipedia page of the actual race):
+
+```{r results='asis'}
+kable( head(races[,1:7] ,n=5) )
+```
+
+The *results* table provides results data for each car in each race. (The *positionOrder* field is used for ranking drivers who are unclassified by virtue of not completing enough of the race distance.) LEt's split the table into two parts so we can see all the columns clearly:
+
+
+```{r results='asis'}
+kable( head(results[1:9] ,n=5) )
+```
+```{r results='asis'}
+kable( head(results[10:18] ,n=5) )
+```
+
+The *seasons* table provides a link to the Wkipedia page for each season:
+
+```{r results='asis'}
+ kable( head(seasons ,n=5) )
+```
+
+The *status* table gives a natural langiage description of each status code:
+
+```{r results='asis'}
+ kable( head(status ,n=5) )
+```
+
+## Asking Questions of the ergast Data
+
+As you may have noticed, the data we can get from the online ergast API comes in a form that we can make sense of immediately. For example, if we get the results of a particular race, we can see the name of the driver, the constructor name, the status at the end of the race, and so on. The full ergast API also supports queries that allow us to to view data based on just the results associated with a particular driver, year, constructor or circuit, for example, or even based on some combination of those things. *(The `ergastR-core.R` script does not yet contain a comprehensive wrapper for the ergast API. You are encouraged to add to the library and submit patches to it.)*
+
+In the section introducing R dataframes, we saw how it is possible to use the routines in the `ergastR-core.R` source file to query the ergast APIm and then run some simple "queries" on the returned R dataframes in order to select certain rows or columns. With access to our own copy of the ergast database, we might prefer to call on the full support of the SQL query language to pull back this specific data.
+
+However, there is cost associated with making our own queries on a local copy of the ergast database versus calling the ergast API directly: the ergast API returns datasets that have been created by making queries over several ergast database data tables. In order to get a similar response from the database, we either need to run a query on the database that pulls results back from several tables that we have JOINed together ourselves via the database query, or find an alternative way of combining data that has been pulled from separate database requests into several separate dataframes.
+
+### JOINing Tables Within SQLite Database Queries
+
+If we want to find out the names of the drivers associated with the standings at the end of a particular race, we need to do several things:
+
+* find the *raceId* for the race we are interested in from the *races* table
+* get the standings associated with that race from the *driverStandings* table
+* get the driver details for each driver from the *drivers* table
+
+Let's see how to write those queries. In the first case, we can attach a series of conditions to a query in which the results are pulled *FROM* a particular table; the rows that are returned are those rows WHERE the associated conditions are evaluated as true. The *SELECT* statement declares which columns to return: the * denotes "all columns"; we could also provide a commas separated list of column names in order to just pull back data from those columns.
+
+```{r echo=T}
+dbGetQuery(con_ergastdb, 'SELECT * FROM races WHERE year==2013 AND name=="British Grand Prix"')
+```
+
+Note that we can order the results from a search by adding *ORDER BY* on the the end of the query, followed by one or more column names we wish to sort by. The result is returned in **ASC**ending order, but we can also specify a **DESC**ending order.
+
+To limit the number of results that are returned (similar the T *head()* command), add *LIMIT N* to the end of the query to return at most *N* results. (If you ask for results in any order, the *LIMIT* will return the first N results that are found and the query execution will termninate. If you sort the results first, the query needs to execute in full, finding all the results of the query, before then ordering the results.)
+
+What we want to do is get the driver standings at the end of this race. If we just had the *raceId* we could get the standings with the following sort of query:
+
+```{r echo=T}
+dbGetQuery(con_ergastdb, 'SELECT * FROM driverStandings WHERE raceId=887')
+```
+
+We can actually combine those two queries into one, limiting the results to show just the driver standings:
+
+```{r echo=T}
+dbGetQuery(con_ergastdb, 'SELECT ds.driverId, ds.points, ds.position FROM driverStandings ds JOIN races r WHERE ds.raceId=r.raceId AND r.year=2013 AND r.name="British Grand Prix"')
+```
+
+In this case, the *JOIN* command declares which tables we want to return data from, providing each with a shorthand name we can use as prefixes to identify columns from the different tables. The *WHERE* condition is used in the first condition to merge the rows from the two tables on common elements in their resepctive *raceId* values, with the second and third conditions limiting which rows to return based on column values in the *races* table.
+
+We can construct JOINS over multiple tables, not just pairs of tables. For example, to pull in the driver names we need to do a further join with the *drivers* table:
+
+```{r echo=T}
+dbGetQuery(con_ergastdb, 'SELECT d.surname, d.code, ds.points, ds.position FROM driverStandings ds JOIN races r JOIN drivers d WHERE ds.raceId=r.raceId AND r.year=2013 AND r.name="British Grand Prix" AND d.driverId=ds.driverId')
+```
+
+Let's just tidy that up a little and order by the position, then limit the results to show just the top 3:
+
+```{r echo=T}
+dbGetQuery(con_ergastdb, 'SELECT d.surname, d.code, ds.points, ds.position FROM driverStandings ds JOIN races r JOIN drivers d WHERE ds.raceId=r.raceId AND r.year=2013 AND r.name="British Grand Prix" AND d.driverId=ds.driverId ORDER BY ds.position ASC LIMIT 3')
+```
+
+As you can see, we can build up quite complex queries that pull data in from several different tables. The trick to writing the queries is to think clearly about the data you want (that is, the question you want to ask) and then work through the following steps:
+
+* identify which tables that data appears in
+* work out what common key columns would allow you to combine data from the different tables
+* identify what key values give you a way in to the question  (for example, in the above case we had to identify the rabce name and year to get the *raceId*)
+* add in any other search limits or ordering terms
+
+As well as pulling back separate results rows, we can also aggregate the results data. For example, suppose we wanted to count the number of second place finishes Alonso has ever had. We could get the separate instances back as follows:
+
+* find Alonso's *driverId* (so something like *SELECT driverId FROM drivers WHERE code="ALO"*)
+* find the races in 2013 where he was in second position (the base query would be something like *SELECT raceId FROM results WHERE driverId=??? AND position=2*. We can find the *driverId* from a JOIN: *SELECT r.raceId FROM results r JOIN drivers d WHERE d.code="ALO" AND r.driverId=d.driverId AND r.position=2*)
+
+We can now count the number of instances as follows:
+
+```{r echo=TRUE}
+dbGetQuery(con_ergastdb, 'SELECT COUNT(*) secondPlaceFinishes FROM results r JOIN drivers d WHERE d.code="ALO" AND r.driverId=d.driverId AND r.position=2')
+```
+
+We can then go further - who are the top 5 drivers with the greatest number of podium (top 3) finishes, and how many?
+
+```{r echo=TRUE}
+dbGetQuery(con_ergastdb, 'SELECT d.code, d.surname, COUNT(*) podiumFinishes FROM results r JOIN drivers d WHERE r.driverId=d.driverId AND r.position>=1 AND r.position<=3 GROUP BY d.code, d.surname ORDER BY podiumFinishes DESC LIMIT 5')
+```
+
+Do you notice anything odd about that result?
+```{r echo=TRUE}
+dbGetQuery(con_ergastdb, 'SELECT DISTINCT driverRef, surname FROM drivers WHERE surname=="Hill"')
+```
+The surname is an ambiguous identifier, so we need to be a little more precise in our query of podium finishers:
+
+```{r echo=TRUE}
+dbGetQuery(con_ergastdb, 'SELECT d.code, d.driverRef, COUNT(*) podiumFinishes FROM results r JOIN drivers d WHERE r.driverId=d.driverId AND r.position>=1 AND r.position<=3 GROUP BY d.code, d.surname ORDER BY podiumFinishes DESC LIMIT 5')
+```
+
+In this case, the COUNT operator is applied over groups of rows returned from the GROUP BY operator. Other summarising operators are also available. For example, MAX() returns the maximum value from a group of values, MIN() the minimum, SUM() the sum of values, and so on. (See also: [SQLite aggregate functions](http://sqlite.org/lang_aggfunc.html))
+
+X> **Exercise**
+X>
+X> See if you can work out what queries can be used to generate some of the other results tables described on the [List of Formula One driver records](http://en.wikipedia.org/wiki/List_of_Formula_One_driver_records) Wikipedia page.
+
+
+X> **Exercise**
+X>
+X> The ergast API offers several "high level" patterns for querying F1 results data via a URL that you can construct yourself.
+X>
+X>
+X> Explore some of the queries you can make on the ergast website. Choose two or three of these rich data requests and see if you can create equivalent queries onto the ergast SQLite database. Check the results of running your query against the results returned from the ergast API.
+
+### Nested SELECTs and TEMPORARY VIEWS
+
+Sometimes we may want to run a SELECT query that draws on the results of another query. For example, consider this query, which finds the distinct *driverId*s for drivers competing in the 2013 season:
+
+```{r}
+dbGetQuery(con_ergastdb, 'SELECT DISTINCT ds.driverId from driverStandings ds JOIN races r WHERE r.year=2013 AND r.raceId=ds.raceId')
+```
+
+We can pull on this list of *driverId*s to return the full driver information from the *drivers* for each driver competing in 2013.
+
+```{r}
+dbGetQuery(con_ergastdb, 'SELECT * FROM drivers WHERE driverId IN (SELECT DISTINCT ds.driverId from driverStandings ds JOIN races r WHERE r.year=2013 AND r.raceId=ds.raceId )')
+```
+
+To support the reuse of this dataset, we can CREATE a TEMPORARY VIEW that acts like a database table containing this data.
+
+```{r}
+dbGetQuery(con_ergastdb, 'CREATE TEMPORARY VIEW drivers2013 AS SELECT * FROM drivers WHERE driverId IN (SELECT DISTINCT ds.driverId from driverStandings ds JOIN races r WHERE r.year=2013 AND r.raceId=ds.raceId )')
+```
+
+We can then run SELECT queries FROM this view as if it were any other data table.
+
+### More Examples of Merging Dataframes in R
+
+As well as running compound queries and multiple joins via SQL queries, we can of course further manipulate data that is returned from a SQL query using R dataframe operations. For example, here are some examples of merging R dataframes pulled back from separate queries onto the ergast database.
+
+For example, to find the names of the winners of the 2013 races, first we need to get the *raceId*s from the *races* table:
+
+```{r message=T,echo=T}
+raceIDs=races[races['year']=='2013',1:3]
+raceIDs
+```
+
+The next thing we need to do is pull in information about the winners of each race in 2013. The winners are in the results table. We want to pull in information about the person in the first position in each race, but to make sure we match on the correct thing we need to see whether or not we want to match on 1 as a digit or as a character. We can ask R what sort of thing it thinks is the type of each column in the *results* table:
+
+```{r message=T,echo=TRUE}
+str(results)
+```
+
+So, do we want to test on *position==1*, *positionText=="1"*, or *positionOrder=="1"*? Looking carefully at the structure of the table, we see that the *position* element is occasionally undetermined (*NA*); that is, no position is recorded. If we test whether or not *1==NA*, we get *NA* rather than *FALSE* as a result. As the simple filter brings back results if the answer is not FALSE, we would get a false positive match if the position is NA, rather than 1. That is, if we were to trivially filter the dataframe by testing for *position==1*, it would pull back results where the position is either 1 or NA,
+
+```{r message = T,, echo=TRUE}
+#To trap the filter against returning NA results, we might use constructions such as:
+#head(results[results['position']==1 & !is.na(results['position']),])
+
+firstPositions=results[results['positionOrder']=="1",]
+```
+
+We can now merge the first place results dataframe with the 2013 raceIDs dataframe. To show there's no sleight of hand involved, here are the columns we have in original *raceIDs* dataframe:
+
+```{r message=T,echo=T}
+colnames(raceIDs)
+```
+
+Now let's see what happens when we merge in *from the right* some matching data from the *firstPositions* dataframe:
+
+```{r message=T,echo=TRUE}
+raceIDs=merge(raceIDs, firstPositions,by='raceId')
+colnames(raceIDs)
+```
+
+We can also pull in information about the drivers:
+
+```{r message=T,echo=TRUE}
+raceIDs=merge(raceIDs, drivers,by='driverId')
+colnames(raceIDs)
+```
+
+And the constructors...
+
+```{r message=T,echo=TRUE}
+raceIDs=merge(raceIDs, constructors,by='constructorId')
+colnames(raceIDs)
+```
+
+Note that where column names collide, an additional suffix is added to the column names, working "from the left". So for example, there was a collision on the column name *nationality*, so new column names are derived to break that collision. *nationality.x* now refers to the nationality column from the left hand table in the merge (that is, corresponding to the driver nationality, which we had already merged into the *raceIDs* dataframe) and *nationality.y* refers to the nationality of the constructor.
+
+Let's also pull in the races themselves...
+
+```{r message=T,echo=TRUE}
+raceIDs=merge(raceIDs, races,by='raceId')
+colnames(raceIDs)
+```
+
+Hopefully you get the idea?! We can mix and match the way we work with data in a way that is most convenient for us.
+
+## Summary
+
+In this chapter we have seen how we can write a wide variety of powerful queries over the ergast database, in this case managed via SQLite. (The same SQL queries should work equally well if the data is being pulled from a MySQL database, or PostgreSQL database.)
+
+In particular, we have seen (albeit breifly) how to:
+
+* retrieve data columns from a database table using SELECT .. FROM .., along with the DISTINCT modifier to retrieve unique values or combinations of values
+* use the WHERE operator to filter rows and match row values from separate tables
+* use the JOIN statement to support the retrieval of data from multiple columns
+* use the GROUP BY operator to group rows (and the *COUNT()* operator in the SELECT statemnt to count the number of rows in each group)
+* use the HAVING operator to filter results based on GROUP operations
+* use the IN statement to allow selection of data based on the results on another SELECT statement (a "nested" SELECT)
+* generate a temporary view that acts like a custom datatable using CREATE TEMPORARY VIEW
+
+
+## Exercises and TO DO
+
+Practice your SQL skills by coming up with a range of trivia questions about historical Formula One statistics and then seeing whether you can write one or more SQL qieries over the ergast database that will answer each question.
+
+If you feel that SQL is easier to use than the native R based filtering and sorting operations, you might find the `sqldf` package on CRAN useful. This package allows you to execute SQL style queries over the contents of a dataframe.

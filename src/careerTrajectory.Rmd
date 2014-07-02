@@ -1,0 +1,179 @@
+# Career Trajectory
+
+
+*Based on the **Career Trajectories** chapter of **Analyzing Baseball Data with R**.*
+
+```{r}
+require(RSQLite)
+
+con_ergastdb = dbConnect(drv='SQLite', dbname='./ergastdb13.sqlite')
+
+#tbs=dbGetQuery(con_ergastdb, 'SELECT name FROM sqlite_master WHERE type = "table"')
+```
+
+
+Use crude year count - better to calculate age at the start of the year? Or mid-season?
+
+```{r}
+drivers2013=dbGetQuery(con_ergastdb, 'SELECT * FROM drivers WHERE driverId IN (SELECT DISTINCT ds.driverId from driverStandings ds JOIN races r WHERE r.year=2013 AND r.raceId=ds.raceId )')
+
+
+```
+
+Find the standings at the end of a particular year - 
+
+```{r}
+drivers2013=dbGetQuery(con_ergastdb, 'SELECT d.driverRef, d.code, ds.position, d.dob FROM driverStandings ds JOIN drivers d WHERE ds.raceID IN (SELECT raceId FROM races WHERE year=2013 and round IN (SELECT MAX(round) FROM races WHERE year=2013)) AND ds.driverId=d.driverId')
+
+drivers2013$dob=as.Date(drivers2013$dob)
+drivers2013$birthyear=format(drivers2013$dob, "%Y")
+
+```
+
+
+```{r message=T,echo=T}
+source('~/Dropbox/wranglingf1datawithr/src/ergastR-core.R')
+```
+
+```{r}
+alonso = driverCareerStandings.df('alonso')
+
+getYearFromDate=function(date){
+  as.numeric(format(as.Date(date), "%Y")) 
+}
+
+driverData.list=function(driverRef){
+  dURL=paste(API_PATH,'drivers/',driverRef,'.json',sep='')
+  drj=getJSONbyURL(dURL)
+  dd=drj$MRData$DriverTable$Drivers[[1]]
+  list(
+    dateOfBirth=as.Date(dd$dateOfBirth),
+    driverId=dd$driverId,
+    nationality=dd$nationality,
+    yearOfBirth=getYearFromDate(as.Date(dd$dateOfBirth))
+  )
+}
+alonsodata=driverData.list('alonso')
+drivercareer.aug=function(driverRef){
+  drivercareer=driverCareerStandings.df(driverRef)
+  driverdata=driverData.list(driverRef)
+  drivercareer$age=drivercareer$year-driverdata$yearOfBirth
+  drivercareer
+}
+
+careerplot=function(driverRef){
+  drivercareer=drivercareer.aug(driverRef)
+  ggplot(drivercareer)+geom_point(aes(x=age,y=pos))
+}
+
+#baseball book
+fit.model= function(d){
+  fit = lm(pos ~I(age) +I((age)^2),data=d)
+  b=coef(fit)
+  age.max=30-b[2]/b[3]/2
+  maxx=b[1]-b[2]^2/b[3]/4
+  list(fit=fit,age.max=age.max,maxx=maxx)
+}
+
+fit.model2= function(d){
+  fit = lm(pos ~driverRef+I(age) +I((age)^2),data=d)
+  b=coef(fit)
+  age.max=30-b[2]/b[3]/2
+  maxx=b[1]-b[2]^2/b[3]/4
+  list(fit=fit,age.max=age.max,maxx=maxx)
+}
+
+fit.model3= function(d){
+  fit = lm(pos ~driverRef+car+I(age) +I((age)^2),data=d)
+  b=coef(fit)
+  age.max=30-b[2]/b[3]/2
+  maxx=b[1]-b[2]^2/b[3]/4
+  list(fit=fit,age.max=age.max,maxx=maxx)
+}
+
+al=drivercareer.aug('alonso')
+ff=fit.model(al)
+plot(al$age,al$pos)
+lines(al$age,predict(ff$fit,age=al$age))
+
+
+but=drivercareer.aug('button')
+web=drivercareer.aug('webber')
+al=drivercareer.aug('alonso')
+aa=rbind(but,web,al)
+
+ff2=fit.model2(aa)
+plot(aa$age,aa$pos)
+#?how do we plot just the age and age^ parameters?
+lines(aa$age,predict(ff2$fit,age=aa$age))
+
+albu2=rbind(al2,bu2)
+
+ggplot(aa,aes(x=age,y=pos))+stat_smooth(method = "lm", formula = y ~ I(x-28) +I((x-28)^2)) +geom_point()
+
+ggplot(aa,aes(x=age,y=pos,col=driverRef))+stat_smooth(method = "lm", formula = y ~ I(x-28) +I((x-28)^2)) +geom_point()
+
+ggplot(aa,aes(x=age,y=pos,col=driverRef))+stat_smooth(method = "lm", formula = y ~ I(x-28) +I((x-28)^2)) +geom_point()+facet_wrap(~car)
+
+ggplot(aa,aes(x=year,y=pos,col=car))+stat_smooth(method = "lm", formula = y ~ I(x-28) +I((x-28)^2)) +geom_point()
+
+#need a team continuity column
+require(zoo)
+#age in years and months between race and dob
+as.yearmon(as.Date('2010-11-14'))-as.yearmon(as.Date('2009-10-14'))
+```
+
+
+##BBC analysis
+http://www.bbc.co.uk/sport/0/formula1/26464195
+
+#F1 grandprix
+http://f1-grandprix.com/?page_id=3256
+
+
+http://www.pinnaclesports.com/online-betting-articles/06-2013/formula-one-driver-pole-conversion-rates.aspx
+
+
+The age-productivity gradient: evidence from a sample of F1 drivers
+http://www1.unive.it/media/allegato/DIP/Economia/Working_papers/Working_papers_2009/WP_DSE_castellucci_pica_padula_16_09.pdf
+
+??how about doing all races and age as 
+
+
+Get drivers in 2013
+
+Get last races of year
+
+Get standings of drivers in 2013 in all last races of year
+
+Get all their standins in last 
+
+
+
+FInd last races over all years 
+
+dbGetQuery(con_ergastdb, 'CREATE TEMPORARY VIEW lastRounds AS SELECT s.year,r.raceId,r.round,r.name, s.maxRound FROM (SELECT year,MAX(round) maxRound FROM races GROUP BY year) s JOIN races r WHERE r.round=s.maxRound AND r.year=s.year')
+
+dbGetQuery(con_ergastdb, 'SELECT * from lastRounds LIMIT 10')
+
+dbGetQuery(con_ergastdb, 'CREATE TEMPORARY VIEW drivers2013 AS SELECT * FROM drivers WHERE driverId IN (SELECT DISTINCT ds.driverId from driverStandings ds JOIN races r WHERE r.year=2013 AND r.raceId=ds.raceId )')
+
+dbGetQuery(con_ergastdb, 'CREATE TEMPORARY VIEW constructors2013 AS SELECT * FROM constructors WHERE constructorId IN (SELECT DISTINCT cs.constructorId from constructorStandings cs JOIN races r WHERE r.year=2013 AND r.raceId=cs.raceId )')
+
+dbGetQuery(con_ergastdb, 'SELECT * from drivers2013')
+dbGetQuery(con_ergastdb, 'SELECT * from constructors2013')
+
+tmp=dbGetQuery(con_ergastdb, 'SELECT * from driverStandings ds JOIN races r JOIN drivers d WHERE ds.raceId in (SELECT raceId FROM lastRounds) AND ds.driverId IN (SELECT driverId FROM drivers2013) AND r.raceId=ds.raceId AND d.driverId=ds.driverId')
+
+tmp2=dbGetQuery(con_ergastdb, 'SELECT * from constructorStandings cs JOIN races r JOIN constructors c WHERE cs.raceId in (SELECT raceId FROM lastRounds) AND cs.constructorId IN (SELECT constructorId FROM constructors2013) AND r.raceId=cs.raceId AND c.constructorId=cs.constructorId')
+
+drivers with at least 10 years history
+
+dbGetQuery(con_ergastdb, 'SELECT d.driverId, d.driverRef, COUNT(*) years FROM driverStandings ds JOIN drivers d WHERE raceId IN (SELECT raceId FROM lastRounds) AND d.driverId=ds.driverId GROUP BY ds.driverId HAVING years>=10 ORDER BY years DESC')
+
+Can also do chamionships by constructor?
+
+dbGetQuery(con_ergastdb, 'SELECT c.constructorId, c.constructorRef, COUNT(*) years FROM constructorStandings cs JOIN constructors c WHERE raceId IN (SELECT raceId FROM lastRounds) AND c.constructorId=cs.constructorId GROUP BY cs.constructorId HAVING years>=10 ORDER BY years DESC')
+
+??any dbpedia data for teams previously known as?
+

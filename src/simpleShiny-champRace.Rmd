@@ -1,0 +1,129 @@
+```{r setup, echo = F}
+opts_chunk$set(fig.path = "images/", echo=FALSE, message=FALSE)
+```
+A Simple Shiny Explorer - The Race to the Championship
+========================================================
+
+With the final two rounds of the 2012 Championship, Sebastian Vettel and Fernando Alonso were separated by just 10 points, with third placed Kimi Raikkonen over 50 points behind Vettel, and therefore out of the running for the driver's World Champion position.
+
+```{r results='asis', echo=TRUE}
+require(devtools)
+source_url('https://gist.githubusercontent.com/psychemedia/11187809/raw/ergastR-core.R')
+
+kable(head(seasonStandings(2012,18),n=3))
+```
+
+Pundits and commentators took the opportunity to run through different scenarios - if Vettel took third place in the penultimate race, where would he have to finish in the final race to take the championship? If Alonso won the penultimate race, what would *he* have to do in the final race to win the championship?
+
+To explore this issue, we can sketch out an algorithm more identifying who would win the championship in the final race, based on final classification of Vettel and Alonso in that race, given their classifications in the penultimate race.
+
+* work out the points difference between VET and ALO for all their possible points combinations in the US Grand Prix (the penultimate race);
+* calculate the points difference going into the Brazilian Grand Prix (the final race);
+* calculate the possible outcomes depending on placements in the Brazilian Grand Prix;
+* work out how to disaplay the analysis.
+
+One way to approach this problem is to work backwards from the desired result. So how might we display the output of our analysis?
+
+One way is to plot the points scoring final race classifcations for each driver in the final race and identify which driver would take the championship in each case. Something like this, for example:
+
+
+
+There are essentially two steps (with an optional middle third step) to a Shiny model:
+
+- a file (*ui.R*) containing  
+- a file (*server.R*) containing
+- an optional file (*global.R*) 
+
+
+
+The Shiny app requires two bits of code – a UI in file ui.R, in which I define two sliders that allow me to set the actual (or anticpated, or possible;-) race classifications in the US for Vettel and Alonso:
+
+![Shiny app](shiny-f1driverchamp2012.png)
+
+    
+    
+    
+library(shiny)
+ 
+shinyUI(pageWithSidebar(
+   
+  headerPanel("F1 Driver Championship Scenarios 2012"),
+   
+  sidebarPanel(
+    sliderInput("alo", 
+                "ALO race pos in United States Grand Prix:", 
+                min = 1, 
+                max = 11, 
+                value = 1),
+    sliderInput("vet", 
+                "VET race pos in United States Grand Prix:", 
+                min = 1, 
+                max = 11, 
+                value = 2)
+  ),
+   
+  mainPanel(
+    plotOutput("distPlot")
+  )
+))
+
+
+
+
+
+
+
+library(shiny)
+library(ggplot2)
+library(reshape)
+ 
+shinyServer(function(input, output) {
+  points=data.frame(pos=1:11,val=c(25,18,15,12,10,8,6,4,2,1,0))
+  points[[1,2]]
+  a=245
+  v=255
+   
+  pospoints=function(a,v,pdiff,points){
+    pp=matrix(ncol = nrow(points), nrow = nrow(points))
+    for (i in 1:nrow(points)){
+      for (j in 1:nrow(points))
+        pp[[i,j]]=v-a+pdiff[[i,j]]
+    }
+    pp
+  }
+   
+  pdiff=matrix(ncol = nrow(points), nrow = nrow(points))
+  for (i in 1:nrow(points)){
+    for (j in 1:nrow(points))
+      pdiff[[i,j]]=points[[i,2]]-points[[j,2]]
+  }
+   
+  ppx=pospoints(a,v,pdiff,points)
+   
+  winmdiff=function(vadiff,pdiff,points){
+    win=matrix(ncol = nrow(points), nrow = nrow(points))
+    for (i in 1:nrow(points)){
+      for (j in 1:nrow(points))
+        if (i==j) win[[i,j]]=''
+        else if ((vadiff+pdiff[[i,j]])>=0) win[[i,j]]='VET'
+        else win[[i,j]]='ALO'
+    }
+    win
+  }
+   
+  output$distPlot <- renderPlot({
+    wmd=winmdiff(ppx[[input$vet,input$alo]],pdiff,points)
+    wmdm=melt(wmd)
+    g=ggplot(wmdm)+geom_text(aes(X1,X2,label=value,col=value))
+    g=g+xlab('VET position in Brazil')+ ylab('ALO position in Brazil')
+    g=g+labs(title="Championship outcomes in Brazil")
+    g=g+ theme(legend.position="none")
+    g=g+scale_x_continuous(breaks=seq(1, 11, 1))+scale_y_continuous(breaks=seq(1, 11, 1))
+    print(g)
+  })
+})
+
+
+https://github.com/psychemedia/f1DataJunkie/tree/master/f1djR/shinychamp
+
+https://gist.github.com/psychemedia/6cead2633fdc8d158542

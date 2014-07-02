@@ -1,0 +1,203 @@
+# Chapter One - The Tools We're Working With
+
+
+```{r setup, echo = F}
+require(knitr)
+opts_chunk$set(fig.path = "images/")
+```
+
+## Preamble
+
+*This book is a hands-on guide to wrangling and visualising data, put together to encourage you to start working with Formula One data yourself using a range of free, open source tools and, wherever possible, openly licensed data. But this book isn't just a book for F1 fans. It's a book full of recreational data puzzles and examples that explore how to twist and bend data into shapes that tell stories. And it's crammed full of techniques that aren't just applicable to motorsport data. So if you find a technique or visualisation you think you may be able to use, or improve, with your own data, wheresoever it comes from, then go for it!*
+
+Formula One is a fast paced sport - and industry. Cars are originally developed over relatively short time-periods: when the season is on the race to update and improve car performance is as fast moving and ferocious in the pits and factories as it is on the track. F1 is also, increasingly, a data driven sport. Vast amounts of telemetry data are streamed in realtime from cars to pits and back to the home factories over the course of a race weekend, and throughout the race itself. Data plays a key role in car design: computational fluid dynamics (not something we shall cover here!) complements wind tunnel time for checking the aerodynamic performance of evolving car designs. And data plays a key role in developing race strategies: race simulations are run not just on the track but also in 'mission control' centres, not just in advance of the race but during the race itself, as strategies evolve, and 'events, dear boy, events' take their toll.
+
+In many sports, "performance stats" and historical statistics provide an easy fill for commentators looking to add a little colour or context to a report, but where do the commentary teams find the data, or the stories in the data?
+
+The focus in these pages will be primarily on the stats: statistics about previous races, previous championships, and the performance of current or previous drivers. We'll see where those stats come from, and how to create fun facts and figures of your own to rival the apparently boundless knowledge of the professional commentators, or professional motorsport statisticians such as @virtualstatman, Sean Kelly. If you fancy the occasional flutter on an F1 race or final championship standing, you may even be able to get some of the stats to work for you...
+
+Where the data's available, we'll also try to have a glimpse behind the scenes at some of the number crunching the teams get up to, from analysing telemetry to plotting race strategy. There are several blogs that are worth following in this respect, such as [intelligentF1](http://intelligentf1.wordpress.com/), where rocket scientist James Beck analyses laptime data each race weekend to try to model, and explain, the tyre selection, fuel saving and race strategies the teams adopt each weekend. 
+
+I'm also hoping you may try to develop your own visualisations and analyses, joining a week-on-week race to develop, refine, improve and build on the work in these pages as well as your own. And I have another hope, too - that you may find some of the ideas about how to visualise data, how to work with data, how to have *conversations* with data of some use outside of F1 fandom, maybe in your workplace, maybe in your local community, or maybe in other areas of motorsport.
+
+## What are we trying to do with the data?
+
+As well as using Formula One data to provide a context for learning how to wrangle and visaulise data in general, it's also the case that we want to use these techniques to learn something about the world of F1. So what's the data good for?
+
+In the first case, we can look for stories in the data that tell us about *what has happened* - the drivers who have won the most races, or taken the most pole positions; which the most successful teams were, or are, for some definition of "successful"; how many laps each driver led a particular race for. And so on.
+
+Secondly, we can use the data to try to *predict* what will happen in the future: who is most likely to win the championship this year, or a particular race given the performance in that weekend's practice and qualifying sessions.
+
+Thirdly, we can use the data as a knowledgeable source we can have a conversation with about F1, if we ask the questions in the right way. *Conversations with data* is how I refer to this. You're probably already in the habit of having a conversation with Google about a particular topic: you put in a keyword, Google gives you some links back. You skim of some of them, refine your query, ask again. One link looks interesting so you follow it; the web page gives you another idea, back to Google, a new search query, and so on. In the sense that the Google search engine is just a big database, you've had some sort of conversation with it. After reading this book, you'll hopefully be similarly able to have a conversation with some raw datasets!
+
+## Choosing the tools
+
+As far as the data analysis and visualisation tools go, I wanted to choose an approach that would allow you to work on any major platform (Windows, Mac, Linux) using the same, free tools (ideally open source) irrespective of platform. Needless to say, it was essential that you should be able to create a wide range of data visualisations across a range of Formula One related datasets. At the back of my mind was the idea that a browser based UI would present the ideal solution: in the furst case, browsers are nowadays ubiquitous; secondly, separating out a browser based user interface from an underlying server means that you can run the underlying server either on your own computer, in a virtual machine on your own computer, or on a remote server elsewhere on the web.
+
+Tied to the choice of development environment was the the choice of programming language. There were two major candidates - R and Python. What I was looking for was a programming/data analysis language that would:
+
+* allow you to manipulate data relatively easily - ingesting it from whatever data source we might be using (a downloaded file, an online API, or a database management system);
+
+* be supported by an integrated development environment that would let you develop your own analyses in an interactive fashion, allowing you to see graphical results alongside any code used to generate them, as well as a way of easily previewing the data you were working with.
+
+There were two main options to the language/development environment/visualisation approach that I considered: R/RStudio/ggplot2 and python/IPyython notebook/matplotlib. Both these triumvirates are popular among those emerging communities of data scientists and data journalists. A third possibility, and one that I may explore for future versions of this book, is to run the R code from within an IPython notebook.
+
+In the end, I opted for the R/RStudio/ggplot2 route, not least because I'd already played with a wide range of simple analyses and visualisations using that combination of tools on the f1datajunkie blog. The R milieu has also benefitted in recent months from Ramnath Vaidyanathan's pioneering work on the RCharts library that makes it easy to create a wide range of interactive browser based visualisations built on top of a variety of Javascript based data visualisation libraries, including several based on Mike Bostock's powerful d3.js library.
+
+The RStudio development environment can run as a cross-platform standalone application, or run as a server accessed via a web browser, and presents a well designed environment within which to explore data wrangling with R. Whilst you do not have to use RStudio to run any of the analysis or produce any of the visualisations produced herein, I would recommend it: it's a joy to use.
+
+
+*(There's also a possibility that once finished, I may try to produce a version of this book that follows the python/ipython notebook/matplotlib route, maybe again with a few extensions that support the use of Javascript charting libraries.;-)*  
+
+
+### The RStudio Environment
+
+RStudio is an integrated development envirionment (IDE) for the R programming language. R is a free, open source (GPL licensed) programming language that was originally developed for statistical computing and analysis. R is supported by an active community of contributors who have developed a wide variety of packages for running different sorts of of statistical analysis. R also provides rich support for the production of high quality statistical charts and graphics and is increasingly used in the production of complex data visualisations.
+
+The RStudio IDE is cross-platform application available in a free, open source edition as well as commercially supported versions. Whilst capable of running as a standalone desktop application, RStudio can also run as a server, making the IDE available via a web browser with R code executing on the underlying server. This makes packaging RStudio in a virtual machine, running it as a service, and accessing it through a browser on a host machine, a very tractable affair (for example, [RStudio AMI shared by Louis Aslett](http://www.louisaslett.com/RStudio_AMI/)). Producing a virtual machine pre-populated with tools, scripts and datasets is very much on the roadmap for future revisions of this book.
+
+## The Data Sources
+
+There are several sources of F1 data that I will be drawing on throughout this book, as well as some that will not necessarily be covered in the early editions at least.
+
+### Ergast Motor Racing Database - Overview
+
+The [ergast experimental Motor Racing Developer API](http://ergast.com/mrd/) provides a historical record of Formula One results data dating back to 1950.
+
+The data is organised into a set of 11 database tables:
+
+  * *Season List* - a list of the seasons for which data is available
+  * *Race Schedule* - the races that took place in each given season
+  * *Race Results* - the final classification for each race
+  * *Qualifying Results* - the results of each qualifying session from 2003 onwards
+  * *Standings* - driver and constructor chanpionship standings after each race
+  * *Driver Information* - information about each driver and their race career
+  * *Constructor Information* - details about the race history of each team
+  * *Circuit Information* - information about each circuit and its competition history
+  * *Finishing Status* - describes the finishing status for each competitor
+  * *Lap Times* - race lap times from the 2011 season onwards
+  * *Pit Stops* - pit stop data for each race from 2012 onwards
+
+Chris Newell, maintainer of the ergast website, publishes the results data via both a machine readable online API and via a database dump. We will see how to work with both these sources to generate a wide range of charts as well as some simple interactive applications.
+
+### formula1.com Results Data
+Although not published as open licensed data, or indeed as data in a data format, it is possible to scrape data from the F1.com website and put it into a database, such as a SQLite database.
+
+The formula1.com website publishes current season and historical results data dating back to 1950 at [http://www.formula1.com/results/](http://www.formula1.com/results/).  From 1950 to 2002 only race results are provided. Since 2003, the data includes results from practice and qualifying sessions. From 2004, best sector times and speed trap data is also available for practice and qualifying sessions, and fastest laps and pit stop information for the race.
+
+If you would like to run your own analyses over the formula1.com results data, I have posted details about the python screenscraper I use in one of the appendices.
+
+
+### FIA Event Information and Timing Data
+Over the course of a race weekend, as well as live timing via the F1 website and the F1 official app, the FIA publish timing information for each session via a series of PDF documents. These documents are published on the FIA.com website over the course of the race weekend. Until 2012, the documents for each race would remain available until the next race, at which point they would disappear from the public FIA website. From 2013, an [archive site](http://www.fia.com/championships/archives/formula-1-world-championship/2013) has kept the documents available.
+
+Downloading the PDF documents needs to be done one document at a time. To support the bulk downloading of documents for particular race weekend, I have described a short python program in one of the appendices that can download all the PDF documents associated with a particular race.
+
+The documents published by the FIA for each race are as follows:
+
+* *Stewards Biographies* - brief text based biography for each steward
+* *Event Information*	- biref introduction to the race, quick facts, summary of standings to date, circuit map
+* *Circuit Information*	- graphics of FIA circuit map, F1 circuit map [extracting images from circuit maps???]
+* *Timing Information*	- a range of timing information for each session of the race weekend
+* *FIA Communications*	- for example, notes to teams
+* *Technical Reports* - for example, updates from the FIA Formula 1 Technical Delegate 
+* *Press Conference Transcripts*- transcripts from each of the daily press conferences (Thursday, Friday, Saturday, Sunday)
+* *National Press Office*	- Media Kit from the local press office. [For example, can we recreate the team data panels? Extract car images?]
+* *Stewards Decisions* - notices about Steward's decisions for each day, with information broke down into seperate list items (No/Driver, Competitor (i.e. the team), Time, Session, Fact, Offence, Decision, Reason)
+* *Championship Standings* - drivers and constructors championship standings once the race result is confirmed
+
+#### The FIA Timing Data in Detail
+
+The following list identifies the timing data is available for each of the sessions:
+
+* **Practice**
+  * Classification
+  * Lap Times
+
+* **Qualifying**
+  * Speed Trap
+  * Best Sector Times
+  * Maximum Speeds
+  * Lap Times
+  * Preliminary Classification
+  * Provisional Classification
+  * Official Classification
+
+* **Race**
+  * Starting Grid - Provisional
+  * Starting Grid - Official
+  * Pit Stop Summary
+  * Maximum Speeds
+  * Speed Trap
+  * Lap Analysis
+  * Best Sector Times
+  * Lap Chart
+  * History Chart
+  * Fastest Laps
+  * Preliminary Classification
+  * Provisional Classification
+  * Official Classification
+
+Some of this data is also published as HTML data tables on the previously mentioned formula1.com *results* data area.
+
+#### Using the FIA Event Information
+
+Getting the data from the PDF documents into a usable form is a laborious procedure that requires scraping the data from the corresponding timing sheet and then either adding it to a database or making it otherwise available in a format that allows us to read it into an R data frame.
+
+Note that we can recreate data sets corresponding to some of the sheets from other data sources, such as the Ergast API. However, other data sets must be grabbed by scraping the FIA sheets directly.
+
+*Descriptions of how to scrape from the FIA PDFs, or analyses of data only available from that source, will not be covered in the first few editions of this book.*
+
+
+### Viva F1 - Race Penalties
+For the 2012 and 2013 seaesons, the [Viva F1](http://www.vivaf1.com) site publish a summary list of [race penalties](http://www.vivaf1.com/penalties.php) awarded during the course of a race weekend, and then use this information to generate a visualisation of the penalties. Whilst not broken down as *data*, it is possible to make use of the common way in which the penalties are described to parse out certain "data elements" from the penalty descriptions.
+
+
+### Race Telemetry
+
+Between 2010 and 2013, the McLaren race team published a live driver dashboard that relayed some of the telemetry data from their cars to an interactive, web based dashboard. (Mercedes also had adasboard that streamed live telemetry.) The data was pulled into the web page by polling a Mclaren data source once per second. At the time, it was possible to set up a small data logging script that would similarly call this source once a second and produce a data log containing telemetry data collected over a whole session. This data could then be used to analyse performance over the course of a session, or provide a statistical view over the data based on samples collected at similar locations around the track across one or more sessions.
+
+The current F1 app includes live information about track position and tyre selection, but the data is not made openly available. The commercial licensing decisions surrounding this particular set of F1 data therefore makes fan driven innovation around it very difficult.
+
+## Getting the Data into RStudio
+
+The Ergast API publishes data in two data formats - JSON (Javascript Object Notation) and XML. Calls are made to the API via a web URL, and the data is returned in the requested format. To call the API therefore requires a live web connection. To support this book, I have started to develop an R library that can be used to request data from the Ergast API in JSON form, and then cast it into an R data frame.
+
+Historical data for all *complete* seasons to date is available as a MySQL database export file that is downloadable from the ergats website. Whilst R can connect to a MySQL database, using this data does require the that the data is uploaded to a MySQL database, and that the database is configured with whatever permissions are required to allow R to access the data. To simplify the database route, I have converted to the MySQL export file to a SQLite database file. This simple database solution allows R to connect to the SQLite database directly. The appendix *Converting the ergast Database to SQLite* describes how to generate a sqlite3 version of the database from the original MySQL data export file.
+
+We will see how to use both the ergast API and the explorted ergast database as the basis for F1 stats analyses and data visualisations.
+
+
+## Example F1 Stats Sites
+
+Several websites producing comprehensive stats reports around F1 that can provide useful inspiration for developing our own analyses and visualisations, or for trying to replicate those produced by other people.
+
+I have already mentioned the [intelligentF1](http://intelligentf1.wordpress.com/) website, which analyses race history charts from actual races as well as second practice race simulations in an attempt to identify possible race strategies, particularly insofar as they relate to tyre wear and, form the 2014 season, fuel saving.
+
+On the season and race stats side, [F1fanatic](http://www.f1fanatic.co.uk/statistics/2014-f1-statistics/) produces a wide range of borwser based interactive season and race summary charts, some of which we'll have a go at replicating throughout this book.
+
+Although not an F1 stats site *per se*, I always enjoy visiting [sidepodcast.net](http://sidepodcast.net), not least for its lively community and live race coverage.
+
+## How to Use This Book
+
+This book is filled with bits and pieces of R code that have been used to directly generate all the analyses and visualisations shown in these pages. You should be able to copy the code and run it in your own version of RStudio assuming you have downloaded and installed the appropriate R packages, and that the necessary data files are available (whether by downloading them or accessing them via a live internet/web connection).
+
+Explanations of how the code works is presented in both the text and as comments in the inline code. You are encouraged to read the program code to get a feel for how it works. Comments are used to introduce and explain various code elements where appropriate, so by not reading the code fragments you may miss out on learning some handy tips and tricks that are not introduced explictly in the main text.
+
+Several of the chapter include an *Exercises* sections that includes a few recreational data puzzles and exercises for you to practice again some of the things covered in the chapter. Some of these exercise sections also include *TO DO* items. These reflect the work-in-progress nature of this live book and represent things I haven't yet got round to doing and that may be useful for future rolling editions of the text. *TO DO* items may go beyond simply rehearsing or stretching the ideas covered in the respective chapter and may require some new learning to be done, problems to be solved, or things to be figured out!
+
+## The Rest of This Book...
+
+For the next few months, this book will be a living book, which means that it is subject to change. For the moment, the chapters wil be broadly grouped as follows:
+
+* *getting started* sections - introducing the technical tools we'll be using, R and Rstudio, and the datasets we'll be playing with, in particular the ergast data.
+* *race weekend analysis* - a look at data from over a race weekend, how to start analysing it and how we can visualise it;
+* *season analysis* sections - looking at season reviews and toos and techniques for analysing and visualsising results across a championship and comparing performances year on year;
+* *map views* - a look at how what geo and GPS data is available, and how we might be able to make use of it
+* *the gambler's way* - a quick review of how to grab betting data, and some of the things we may be able to draw from it;
+* *interactive web charts* using a variety of d3.js inspired HTML5 charting libraries via the rCharts library;  
+* *application development* - how to develop simple interactive applications with the shiny R library.
+
+If you spot any problems with the code included in this book, please post an issue to [Wrangling F1 Data with R - github](https://github.com/psychemedia/wranglingf1datawithr/issues).
+
+If you would like to buy this book (including future updates to it), or make a donation to support its development, please visit [Wrangling F1 Data with R - leanpub](https://leanpub.com/wranglingf1datawithr).

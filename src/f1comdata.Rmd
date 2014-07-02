@@ -1,0 +1,120 @@
+Data Scraped from the F1 Website
+================================
+Using the recipe described in Appendix ??, I have scraped the data from the Formula One website into a simple SQLite database. The database contains the following tables:
+
+```{r message=FALSE}
+library("RSQLite")
+f1 = dbConnect(drv="SQLite", dbname="~/Dropbox/wranglingf1datawithr/src/scraperwiki.sqlite")
+dbListTables(f1)
+```
+
+The `pNResults` tables record the classification for each of the three practice sessions (N=1,2,3) run over each race weekend:
+
+```{r results='asis'}
+kable(dbGetQuery(f1, ("SELECT * FROM p1Results LIMIT 5")))
+```
+
+The practice session results include the name of each driver, their classification within that session, their team, the number of laps they completed, their best laptime as a natural time (using the format *minutes:seconds.milliseconds*) and as a time in seconds and milliseconds, and the natural gap (*natgap*)/*gap* (the *natgap* as seconds/milliseconds) to the best time in the session.
+
+The `pNSectors` tables contain the best sector times recorded by each driver in each practice session (N=1,2,3), and the 'qualiSectors` table the best sector times from qualifying:
+
+```{r results='asis'}
+kable(dbGetQuery(f1, ("SELECT * FROM p1Sectors LIMIT 5")))
+```
+
+
+The `pNSpeeds` table records the fastest speed recorded by each driver in a given practice session (N=1,2,3), with the `qualiSpeeds` table given the best speeds achieved during qualifying:
+
+```{r results='asis'}
+kable(dbGetQuery(f1, ("SELECT * FROM p1Speeds LIMIT 5")))
+```
+
+We can combine the sector times from each sector by binding the rows from queries onto separate session tables together, as well as creating appropriately named dataframes in the global scope. To distinguish which session the sector times were set in, we add a new column that specifies the session; to generalise the underlying function, we pass in the partial name of the data table according to the session data we want to return (*Sectors* or *Speeds*):
+
+```{r}
+sessionData=function(race,year,sessionType='Sectors',sessions=c('p1','p2','p3','quali')){
+  df=data.frame()
+  if (length(sessions)>=1)
+    for (session in sessions) {
+      sessionName=paste(session,sessionType,sep='')
+      q=paste("SELECT * FROM ", sessionName, " WHERE race=UPPER('",race,"') AND year='",year,"'", sep="")
+      #print(q)
+      #The following line creates appropriately named dataframes in the global scope
+      #containing the results of each seprate query
+      assign(sessionName,dbGetQuery(conn=f1, statement=q), envir = .GlobalEnv)
+      df.tmp=get(sessionName)
+      df.tmp['session']=session
+      df=rbind(df,df.tmp)
+    }
+  df
+}
+
+sectorTimes=function(race,year,sessions=c('p1','p2','p3','quali')){
+  sessionData(race,year,'Sectors',sessions)
+}
+
+sessionSpeeds=function(race,year,sessions=c('p1','p2','p3','quali')){
+  sessionData(race,year,'Speeds',sessions)
+}
+
+#Usage:
+#Get all the practice and qualifying session sector times for a specific race
+#df=sectorTimes('AUSTRALIA','2012')
+
+#Get P3 and Quali sector times
+#df=sectorTimes('AUSTRALIA','2012',c('p3','quali'))
+
+#Get the speeds from the quali session.
+#df=sessionSpeeds('Australia','2012','quali')
+
+#This function can be found in the file f1comdataR-core.R from ?????
+```
+
+```{r results='asis'}
+kable(head(sessionSpeeds('Australia','2012','quali'),n=5))
+
+```
+
+The `qualiResults` table is more elaborate than the results tables for the practice sessions, becuase it includes the best lap time recorded in each qualifying session as well as the number of laps completed across qualifying.
+
+
+```{r results='asis'}
+kable(dbGetQuery(f1, ("SELECT * FROM qualiResults LIMIT 5")))
+```
+
+The race results include the race time for the winner and the total gap to each of the following drivers (or the number of laps they were behind). For drivers that did not finish, the status is returned. The `laps` column gives the number of race laps completed by each driver:
+
+```{r results='asis'}
+kable(dbGetQuery(f1, ("SELECT * FROM raceResults LIMIT 5")))
+```
+
+The `racePits` table summarises pit stop activity, with one line for each pit stop including the lap number the stop was taken on and the time of day. The pit loss time for each stop is given along with the cumulative pit loss time.
+
+```{r results='asis'}
+kable(dbGetQuery(f1, ("SELECT * FROM racePits LIMIT 5")))
+```
+
+The `raceFastLaps` table records the race lap on which each driver recorded their fastes laptime, along with that laptime and the average speed round the lap.
+
+```{r results='asis'}
+kable(dbGetQuery(f1, ("SELECT * FROM raceFastlaps LIMIT 5")))
+```
+
+
+## Problems with the Formula One Data
+Until the 2014 season, driver numbers were allocated to drivers based on the team they drove for and the classification of the team in the previous year's Constructors' Chanpionship. This makes them impossible to use as a consistent identifier across years (driver number 3 this year may not be the same person as driver number 3 last year), something that the introduction of personal driver numbers should help to address. That said, driver number 1 will still change year on year.
+
+## How to use the FormulaOne.com alongside the ergast data
+
+If we compare certain key elements of the data scraped from the FormulaOne.com website and the ergast data, we notice several differences:
+
+?as table
+
+item f1com  ergast notes
+driverName
+driver ID ? *driverName*
+driver three letter ID No Partial (since 201?)
+race name
+race ID  ? race/year key pair
+
+To be able to jointly work on ergast data and data from the FormulaOne.com website, we need to define mapping or lookup operations that allows us to associate unique elements from one dataset with corresponding unique elements from the other.

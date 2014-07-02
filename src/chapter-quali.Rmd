@@ -1,0 +1,17 @@
+Chapter - Qualifying
+========================================================
+
+As with the praticse sessions, we can get results data from the ergast database and additional sector times from the F1 website.
+
+
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r fig.width=7, fig.height=6}
+plot(cars)
+```
+

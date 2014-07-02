@@ -6,3 +6,11 @@
 
 # R data files from past sessions
 .Rdata
+
+src/ergastR/*
+
+*.md
+*.html
+*.png
+*vivaf1-archive/*
+*vivaf1-archive

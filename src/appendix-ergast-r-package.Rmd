@@ -1,0 +1,4 @@
+Appendix - The ergast API R Wrapper
+========================================================
+
+This appendix describes my attempts at putting together an R package to wrap the ergast API.

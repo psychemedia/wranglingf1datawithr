@@ -1,0 +1,2 @@
+A Quick Introduction to ggplot2 and the Grammar of Graphics
+===========================================================

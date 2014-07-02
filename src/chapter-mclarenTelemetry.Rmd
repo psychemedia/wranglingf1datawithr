@@ -1,0 +1,7 @@
+McLaren Telemetry Data
+========================================================
+
+
+Review of telemetry data sheets, dashboards, etc.
+
+Using data scraped from the McLaren website in 2011 and 2012 (appendix ??), we can....

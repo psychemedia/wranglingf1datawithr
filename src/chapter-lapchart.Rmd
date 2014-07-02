@@ -1,0 +1,115 @@
+```{r setup, echo = F}
+opts_chunk$set(fig.path = "images/")
+```
+Chapter - Lapchart
+========================================================
+
+The lap chart is one of the iconic motor racing charts, describing for each driver, as represented by a separate coloured line, their race position at the end of each lap. Using a design style strikingly reminiscent of the clean coloured lines of ??'s London Underground map, the lap chart uses a rank based y-axis identifying race position with an x-axis corresponding to lap number to describe the changing position of each car lap on lap over the course of the race. 
+
+Although the lapchart may become a little cluttered during those periods of the race when many pit stops are taking place, how confused the chart appears to be gives an idea, at a glance, of how frequently positions changed over the course of a race, how quickly cars dropped out, or how processional the race was.
+
+```{r}
+require(RSQLite)
+f1 = dbConnect(drv="SQLite", dbname="/Users/ajh59/code/f1/f1TimingData/f1djR/ergastdb/ergastdb.sqlite")
+tbs=dbGetQuery(f1,'SELECT name FROM sqlite_master WHERE type = "table"')
+tbs
+```
+
+```{r}
+#Load in data relating to the lapTimes for a particular race
+
+#When querying the database, we need to identify the raceId.
+#This requires the year and either the round, circuitId, or name (of circuit)
+raceId=dbGetQuery(f1,'SELECT raceId FROM races WHERE year="2012" AND round="1"')
+
+#There should be only a single result from this query, so we can index its value directly.
+q=paste('SELECT * FROM lapTimes WHERE raceId=',raceId[[1]])
+lapTimes=dbGetQuery(f1,q)
+#lapTimes
+#Note that we want the driverId as a factor rather than as a value
+lapTimes$driverId=factor(lapTimes$driverId)
+
+#We want to convert the time in milliseconds to time in seconds
+#One way of doing this is to take the time in milliseconds colument
+lapTimes$rawtime = lapTimes$milliseconds/1000
+```
+
+blqh??
+
+```{r fig.width=7, fig.height=6}
+require(ggplot2)
+g=ggplot(lapTimes)
+g=g+geom_line(aes(x=lap,y=position,group=driverId,col=driverId))
+g=g+labs(title='Lap chart',x='Lap number', y='Race Position')
+g
+```
+
+Changes in race position result in lines crossing each other. Long straight line show a driver held race position for an extended period.
+
+A step down in the trace that marks out the position of the lowest ranked driver on any given lap shows that at least one other driver dropped out on that lap. If you look closely at the chart you can see where a trace stops short of finishing the race. We can zoom in to the chart by limiting the axis ranges to show such an example:
+
+```{r fig.width=7, fig.height=6}
+g+xlim(30,40)+ylim(13,19)
+```
+
+
+??ordering matter of preference. FOllowing Joe Saward lap chart, may ne more natural to have the lead driver at the top of the chart?
+
+Let's reorder the position levels:
+
+```{r}
+lapTimes$position=reorder(lapTimes$position,-lapTimes$position)
+```
+
+And plot the result:
+
+```{r fig.width=7, fig.height=6}
+g=ggplot(lapTimes)
+g=g+geom_line(aes(x=lap,y=position,group=driverId,col=driverId))
+g=g+labs(title='Lap chart',x='Lap number', y='Race Position')
+g
+```
+
+
+To emphasise those situations where a driver retires or is forced to retire, we can annotate the plot with an additional marker. If we look at the *results* table, we see there is a *statusId* column that identifies the status of each race result. The interpretation of each *statusId* is given in the *status* table.
+
+```{r}
+#First five statusId interpretations
+dbGetQuery(f1,'SELECT * FROM status limit 5')
+```
+
+If we grab the interpretations of the *statusId*s into a dataframe, we can merge these with the race results.
+
+```{r}
+raceId=dbGetQuery(f1,'SELECT raceId FROM races WHERE year="2012" AND round="1"')
+q=paste('SELECT * FROM results WHERE raceId=',raceId)
+results=dbGetQuery(f1,q)
+status=dbGetQuery(f1,'SELECT * FROM status')
+results=merge(results,status, by='statusId')
+```
+
+Unfortunately, where drivers are not classified, the race results table shows a position of NA, rather than giving the race position at the time the driver withdrew. In order to annotate the lap chart using information gleaned from the *status* table, we need to merge that information with the lap data information.
+
+The rows we want to annotate amongst the lap data correspond to the laps referenced in the results data for each driver. If we grab the *driverId* and *laps* data along with the *status*, we can then inject the *status* into the lap data based on *driverId* and *lap(s)* count (that is, the last lap associated with the driver).
+
+```{r}
+results.status=subset(results,select=c('driverId','status','laps'))
+lapTimes.status=merge(lapTimes,results.status,by.x=c('driverId','lap'),by.y=c('driverId','laps'))
+```
+
+Having enriched our data set, we can now overplot onto the race chart. For example, we might highlight all those final laps completed by a driver where the result *status* is **not** *Finished*. 
+```{r fig.width=7, fig.height=6}
+g2=g+geom_point(data=subset(lapTimes.status,status!='Finished'),aes(x=lap,y=position),pch=4,size=2,col='blue')
+g2
+```
+
+Let's zoom in again:
+```{r fig.width=7, fig.height=6}
+g2+xlim(30,40)+ylim(13,19)
+```
+
+
+```{r fig.width=7, fig.height=6}
+g+geom_text(data=subset(lapTimes.status,status!='Finished'),aes(x=lap,y=position,label=status),size=3,angle=45,col='red')
+```
+

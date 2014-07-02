@@ -1,0 +1,209 @@
+```{r setup, echo = F}
+opts_chunk$set(fig.path = "images/", echo=FALSE, message=FALSE)
+```
+# Chapter - Getting the data from the Ergast Motor Racing Database API
+
+We can access the contents of the ergast motor racing database in three distinct ways:
+
+* online, as tabular results in an HTML web page, for seasonal data up to and including the current season and results up to and including the last race;
+* online, via the ergast API, for seasonal data up to and including the current season and results up to and including the last race;
+* via a downloaded image of the database for results to the end of the last completed season.
+
+There are also several third party applications that have been built on top of the ergast data. For further details, see the [ergast Application Gallery](http://ergast.com/mrd/gallery).
+
+Although it can be instructive to review the information available on the ergast website directly, as well as the applications that other people have built, we are more interested in accessing the actual data, whether by the API or the database. Whilst it doesn't really matter where we get the data from for the point of view of analysis, the API and the database offer slighlty different *affordances* when it comes to actually getting data out in a particular form. For example, the API requires a network connection for live data requests or to populate a cache (a local stored copy of data returned from an API request), whereas the database can be run offline but requires a database management system to serve the data in response to database requests. The API also provides data results that combines data from several separate database tables right from the start, whereas with the database we need to work out ourselves how to combine data from several separate data tables.
+
+For convenience, I will tend to refer to *accessing the ergast API* when I mean calling the online API, and *accessing the ergast database* when it comes to querying a local database. However, you should not need to have to install the database for the majority of examples covered in this book - the API will work fine (and is essential when it comes to making queries about the current season). On the other hand, if you are looking for an opportunity to learn a little bit about databases and how to query them, now might be a good time to start!
+
+## Accessing Data from the ergast API
+
+If you have a web connection, one of the most convenient ways of accessing the ergast data is via the ergast API. An API is an *application programming interface* that allows applications to pull data directly from a remote service, such as a database management system, via a programmable interface. The provision of an API means that we can write a short programme to pull data directly from the ergast database that lives at *ergast.com* via the ergast API.
+
+The ergast API publishes data as a JSON or XML data feed. Handling the data directly is a little fiddly, so I have started to put together a small library to make it easier to access this data, as well as enriching it. This type of library is often referred to as a *wrapper* in that it "wraps" the original HTTP/JSON API with a set of native R functions. *For more details, see the appendix.* The library can be found at [ergastR-core.R](https://gist.github.com/psychemedia/11187809#file-ergastr-core-r) and currently contains the following functions:
+
+* *driversData.df(YEAR)*: information about the drivers competing in a given year;
+* *racesData.df(YEAR)*: details of the races that took place or are scheduled to take place in a given year;
+* *resultsData.df(YEAR,RACENUMBER)*: results of races by year and racenumber;
+* *raceWinner(YEAR,RACENUMBER)*: the winner of a race specified by year and race number;
+* *lapsData.df(YEAR,RACENUMBER)*: information about laptimes during a particular race;
+* *driverCareerStandings.df(DRIVERID)*: information about the career standing in terms of end of season classifications for a particular driver;
+* *seasonStandings(YEAR,RACE?)*: championship standings at the end of the year, or (optionally), the end of a particular race.
+
+*On my to do list is learn how to put together a proper R package...*
+
+### Introducing the simple ergastR functions
+
+To load the core *ergastR* functions in, [download the *raw* file](https://gist.github.com/psychemedia/11187809#file-ergastr-core-r) to the current working directory, and use the `source('ergastR-core.R')` command to load in the file. ALternatively, load the `devtools` package and use the `source_url()` function.
+
+```{r message=T,echo=T}
+#If the R file is in the current working directory
+source('ergastR-core.R')
+#If you need to specify the path to the file
+#source('~/Dropbox/wranglingf1datawithr/src/ergastR-core.R')
+
+#You can also load the file in from the online gist
+#Use the source_url() function from the devtools package
+#Note that you may need to install the devtools package first
+#library(devtools)
+#source_url('https://gist.githubusercontent.com/psychemedia/11187809/raw/ergastR-core.R')
+```
+
+Let's look at a preview of each table in turn. We can do this using the R function *head()*, which displays just the first few rows (10 by default) of a dataframe.  For example, *head(df)* previews the first 10 rows for the dataframe *df*. To alter the number of rows displayed, for example to 5, use the construction *head(df,**n=5**)*. To view the rows at the end of the table, you can use the *tail()* command in a similar way.
+
+```{r results='asis', echo=TRUE}
+#USAGE: driversData.df(YEAR)
+drivers.df = driversData.df(2014)
+
+#The knitr library contains a handy function - kable - for generating tabular markdown.
+#We can use it in an Rmd script by setting an Rmd chunk with the option {r results='asis'}
+#Note that /format='markdown'/ is actually the default output for kable.
+kable(head(drivers.df),row.names=F,format="markdown")
+```
+
+In the ergast database, the `driverId` is used to distinguish each driver. The `driversData.df()` function can thus be used to provide additional information about drivers from their `driverId`, such as their new permanent number and their three letter driver code.
+
+When it comes to identifying races, we need two pieces of information. The `year` and the `round`. We can look up races by year by calling `racesData.df()` with the year of interest:
+
+```{r results='asis', echo=TRUE}
+#USAGE: racesData.df(YEAR)
+races.df = racesData.df(2014)
+
+kable(head(races.df),format="markdown")
+```
+
+Knowing the round number we are interested in then allows us to look up data about a particular race. For example, let's look at the first few lines of the results data for the 2014 Malyasian Grand Prix, which happened to be round 2 of that year:
+
+```{r results='asis', echo=TRUE}
+#USAGE: resultsData.df(YEAR,RACENUMBER)
+results.df = resultsData.df(2014,2)
+
+kable(head(results.df))
+```
+
+Having access to laptime data is essential for many race reports. The `lapsData.df()` function returns laptime data for each driver during a particular race.
+
+```{r echo=TRUE}
+USAGE: lapsData.df(YEAR,RACENUMBER)
+laps.df = lapsData.df(2014,2)
+head(laps.df)
+```
+
+Note that the `cuml` and `diff` columns are not returned by the ergast API - I have generated them by ordering the laps for each driver by increasing lap number and then calculating the cumulative live time and the difference between consecutive lap times for each driver separately. *We will see how to do this in a later section.*
+
+We can look up the winner of that race using the `raceWinner()` function:
+
+```{r echo=TRUE}
+#USAGE: raceWinner(YEAR,RACENUMBER)
+winner = raceWinner(2014,2)
+winner
+```
+
+The `raceWinner()` function makes a specific call to the ergast API to pull back the driverId for a particular position in a particular year's race.
+
+To inspect the construction of the `raceWinner()` function, we just enter its name without any argument brackets:
+
+```{r echo=TRUE}
+raceWinner
+```
+
+We see how the URL for the corresponding request takes the form `http://ergast.com/api/f1/YEAR/RACENUMBER/POSITION.json` (API_PATH is set to *http://ergast.com/api/f1/*). For the winner, the construction of the URL thus includes the term **1**.json).We could create a more general function that makes a call for information relating to an arbitrary position, not just first place by parameterising this part of the URL's construction.
+ 
+That is, we might try something of the form:
+
+```{r echo=TRUE}
+#Pass in a race position, by default setting it to first place
+racePosition = function (year, raceNum, racePos=1) {
+     wURL = paste(API_PATH, year, "/", raceNum, "/results/",racePos,".json", 
+         sep = "")
+     wd = fromJSON(wURL, simplify = FALSE)
+     wd$MRData$RaceTable$Races[[1]]$Results[[1]]$Driver$driverId
+}
+
+racePosition(2014,2,3)
+```
+
+As and when you develop new fragments of R code, it often makes sense to wrap them up into a function to make the code easier to reuse. By adding *parameters* to a function, you can write create *general* functions that return *specific* results dependent on the parameters you pass into them. For data analysis, we often want to write very small pieces of code, or particular functions, that do very specific things, rather than writing large very large software programmes. Writing small code fragments in this way, and embedding them in explanatory or discursive text, is an approach referred to as *literate programming*. Perhaps  we need to start to think of programming-as-coding as more to do with writing short haikus than long epics?! 
+
+If you compare the two functions above, you will see how they resemble each other almost completely. By learning to *read* code functions, you can often recognise bits that can be modified to create new functions, or more generalised ones. We have taken the latter approach in the above case, replacing a specific character in the first function with a parameter in the second. (That is, we have further *parameterised* the original function.)
+
+### Indexing in to a dataframe
+
+The `racePosition()` function lets us pull back the details of the driver who finished a particular race in a particular year in a particular position. Another way of finding the driver who finished a particular eace in a particular position is by indexing into the results dataframe as defined by the ergast API call `resultsData.df(YEAR, RACENUMBER)`. Let's filter that dataframe by selecting the *row* corresponding to a particular position, and the column that contains the driver ID.
+
+```{r echo=TRUE}
+results.df[results.df$pos==1,c('driverId')]
+```
+
+*Don't worry about the reporting of the other factor levels in the result that is displayed. If we call on the particular result, only the request value is returned; for example, I can embed the driver ID that is returned here: `r results.df[results.df$pos==1,c('driverId')]`.*
+
+### Merging dataframes in R
+
+As you might imagine, one of the very powerful tools we have to hand when working in R is the ability to merge two dataframes, in whole or in part.
+
+We can *merge* data from two different tables if they each contain a column whose unique values match each other. For example, the `results.df` dataframe contains a column `driverId` that contains a unique ID for each driver (*hamiliton*, *vettel*, and so on). The `driverId` column in the `drivers.df` datafram pulls from the same set of values, and contains additional information about each driver. If we want to augment `results.df` with an additional column that contains the three letter driver code for each driver, we can do that using R's `merge()` function, assigning the result back to `results.df`.
+
+```{r results='asis', echo=TRUE}
+#We can pull just the columns we want from drivers.df
+#We want all rows from drivers.df, but just the 'driverId' and 'code' columns
+kable( head( drivers.df[,c('driverId','code')] ) )
+```
+
+To merge the dataframes, we specify which dataframes we wish to merge and the column on which to merge. The *order* in which we identify the dataframes is important because there are actually several different sorts of merge possible that take into account what to do if the the merge column in the first table contains a slightly different set of unique values than does the merge column in the second table. *We will review the consequences of non-matching merge column values in a later section.*
+
+```{r results='asis', echo=TRUE}
+results.df = merge( results.df, drivers.df[,c('driverId','code')], by='driverId')
+kable( head( results.df, n=3 ) )
+```
+
+If the columns you want to merge on actually have *different* names, they can by specified explicitly. The first dataframe is referred to as the *x* dataframe and the second one as the *y* dataframe; their merge columns names are then declared explicitly:
+
+```{r echo=TRUE}
+#Filter the drivers.df dataframe to just the driverId and code columns
+driverIds.df = drivers.df[,c('driverId','code')]
+#The "x" dataframe is the first one we pass in, the "y" dataframe the second
+laps.df = merge( laps.df, driverIds.df, by.x='driverId', by.y='driverId')
+head( laps.df, n=3 )
+```
+
+Having the three letter code available in the dataframe directly means we can access it easily when it comes to producing a chart. For example, we might plot the fastest lap time against the fastest lap rank, using the code to identify each point:
+
+```{r echo=TRUE}
+#Load in the required charting library
+require(ggplot2)
+
+#Generate a text plot, a scatterplot with textual labels placed at each scatterplot point
+g = ggplot(results.df) + geom_text(aes( x=fastlaprank, y=fastlaptime, label=code))
+g
+```
+
+The warning tells us that data from one row in the dataframe was not plotted, presumably because one or other of the x or y values was missing (that is, set to NA).
+
+Although it's just a simple chart, we can see how the drivers' fastest laptimes split into several groups. Are these actually grouped by team? Let's see... Rather than use the driver code for the labels, let's use `constructorId`, further colouring the labels based on the value of the `constructorId`.
+
+```{r echo=TRUE,warning=FALSE}
+g = ggplot(results.df)
+g = g + geom_text(aes( x=fastlaprank, y=fastlaptime, label=constructorId, col=constructorId))
+g
+```
+
+We can also generate line charts - for example, here's a quick look at the lap times recorded in a particular race:
+
+```{r echo=TRUE}
+ggplot(laps.df) + geom_line(aes(x=lap , y=rawtime, group=driverId))
+```
+
+We'll see later how we can tidy up charts like these by adding in a chart title, tweaking the axis labels and playing with the overall chart style. But for now, you can see how quick it is to start sketching out graphical views of data, if the data is in the right shape and format to start with.
+
+## Summary
+
+In this chapter, we have seen how we can make calls to the ergast API using some predefined R functions contained in the [ergastR-core.R source file](https://gist.github.com/psychemedia/11187809#file-ergastr-core-r). The R functions in this file *wrap* the original ergast API with typically dataframe returning functions that you can use directly in your own R programmes.
+
+In particular, we have seen how we can pull back data covering the drivers or races involved in a particular chanpionship; the results for a particular race; the winning driver from a particular race (and by extension of that function, the driver finishing in a any specified position of a given race); the lap times for a particular race; and the careerwise standings for a particular driver in terms of their position at the end of each season in which they competed.
+
+Whilst the source file does not cover the whole of the ergast API (though perhaps future versions will!) it does provide a good starting point in the form of access to some of the key data sets. By inspecting the current functions, and looking at the data returned from unwrapped ergast API functions, you may find you are able to extend, and probably even improve on, the library by yourself.
+
+We also saw how to filter and merge dataframes, putting some simple combined data into a shape that we could plot using the *ggplot2* package. Whilst the charts we generated were quite scruffy, they hopefully gave you a taste of what's possible. The chapters that follow are filled with a wide range of different visualisation techniques, as well as covering in rather more detail several ways of making you charts look rather tidier!
+
+## Exercises and TO DO
+
+*The functions in **ergastR-core.R** are a little scrappy and could be defined so that they more closely resemble the ergast API definition as described  the API URLs. They should also really be put into a proper R package. I don't know how to do this (yet!) so if you'd like to help - or take on - the development of a properly defined ergast API R package, please let me know...*

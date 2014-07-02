@@ -1,0 +1,171 @@
+```{r setup, echo = F}
+opts_chunk$set(fig.path = "images/")
+```
+Chapter  - Race History Charts
+==============================
+
+If you wanted a chart that summarised a race from the perspective of lap times, what sort of chart would you produce?
+
+At first thought, it might seem as if a simple plot of the laptime recorded by each driver for each lap of the race might do the job. So let's construct just such a chart for a single driver in a single race:
+
+
+
+
+```{r}
+require(RSQLite)
+f1 = dbConnect(drv="SQLite", dbname="/Users/ajh59/code/f1/f1TimingData/f1djR/ergastdb/ergastdb.sqlite")
+tbs=dbGetQuery(f1,'SELECT name FROM sqlite_master WHERE type = "table"')
+tbs
+```
+
+Obtaining the laptime data:
+```{r}
+#Load in data relating to the lapTimes for a particular race
+
+#When querying the database, we need to identify the raceId.
+#This requires the year and either the round, circuitId, or name (of circuit)
+raceId=dbGetQuery(f1,'SELECT raceId FROM races WHERE year="2012" AND round="1"')
+
+#There should be only a single result from this query, so we can index its value directly.
+q=paste('SELECT * FROM lapTimes WHERE raceId=',raceId[[1]])
+lapTimes=dbGetQuery(f1,q)
+#Note that we want the driverId as a factor rather than as a value
+lapTimes$driverId=factor(lapTimes$driverId)
+
+#We want to convert the time in milliseconds to time in seconds
+#One way of doing this is to take the time in milliseconds colument
+lapTimes$rawtime = lapTimes$milliseconds/1000
+```
+
+
+```{r fig.width=7, fig.height=6}
+require(ggplot2)
+g=ggplot(subset(lapTimes,driverId==1))
+g=g+geom_line(aes(x=lap,y=rawtime))
+g=g+labs(title='Plot of laptime vs. lap',x='Lap number', y='Laptime (s)')
+g
+````
+
+To plot the laptimes for each drive on a single plot, we might group each driver's times by colour.
+
+```{r fig.width=7, fig.height=6}
+g=ggplot(lapTimes)
+g=g+geom_line(aes(x=lap,y=rawtime, group=driverId, colour=driverId))
+g=g+labs(title='Plot of laptime vs. lap',x='Lap number', y='Laptime (s)')
+g
+````
+
+This chart is very cluttered and doesn't really help us see the relative race positions of each driver.
+
+To do that, we might want to look at the accumulated race time over laps for each driver.
+
+We already have the laptime data in lap order, so what we need to do now is sum the *rawtime* over laps for each driver. Using the split-apply-combine recipe, that works out as follows:
+
+```{r}
+require(reshape)
+lapTimes=ddply(lapTimes, .(driverId), transform, acctime=cumsum(rawtime))
+```
+
+```{r fig.width=7, fig.height=6}
+g=ggplot(lapTimes)
+g=g+geom_line(aes(x=lap,y=acctime, group=driverId, colour=driverId))
+g=g+labs(title='Plot of accumulated laptime vs. lap',x='Lap number', y='Accumulated laptime (s)')
+g
+````
+
+Hmmm.. not that interesting. How about if we take the average laptime to date? That is, divide the accumulated laptime by the lap number?
+
+```{r fig.width=7, fig.height=6}
+g=ggplot(lapTimes)
+g=g+geom_line(aes(x=lap,y=acctime/lap, group=driverId, colour=driverId))
+g=g+labs(title='Plot of average laptime to date vs. lap',x='Lap number', y='Average laptime to date (s)')
+g
+````
+
+Now perhaps we're starting to get somewhere: there's definitely some definition starting to appear between the different drivers. We're also starting to see something of the decrease in laptime over the course of each stint. The averaging process is also smoothing out the curves somewhat.
+
+How about if we try to plot how far behind the lead driver each driver is at the end of each lap? ?? twistis this idea slightly on the [Lapalyzer website](http://www.lapalyzer.com/) by charting the *session gap*, that is, the accumulated time difference at the end of each lap as compared to the accumulated time difference of the driver that eventually won the race (or at least, that finished the last lap in firt position).
+
+Before we work out how to plot that chart, let's consider something simpler: the accumulated time difference at the end of each lap between the race leader at the end of that lap and each individual driver:
+
+```{r}
+#order laptimes by lap and position
+lapTimes=lapTimes[order(lapTimes$lap,lapTimes$position),]
+#At the end of each lap, find the difference between the cumulative time of the eventual race 
+# winner at the end of that lap and the corresponding cumulative time of each driver
+lapTimes = ddply(lapTimes, .(lap), transform, gap=c(0,diff(acctime)) )
+lapTimes = ddply(lapTimes, .(lap), transform, leadergap=cumsum(gap) )
+```
+
+Here's a plot of that data:
+
+```{r fig.width=7, fig.height=6}
+g=ggplot(lapTimes)+geom_line(aes(x=lap,y=sessiongap,group=driverId, colour=driverId))
+g
+```
+
+Let's flip the y-axis to show the amount of time *behind* the eventual race lead finisher each driver was at the end of each lap:
+
+```{r fig.width=7, fig.height=6}
+g=ggplot(lapTimes)+geom_line(aes(x=lap,y=-sessiongap,group=driverId, colour=driverId))
+g
+```
+
+In it, we see that if there is a change in leadership (the line at the top of the chart), we see a change in the line corresponding to dirver that has the lead at that point.
+
+Looking back at the *Lapalyzer* site, the session gap is subtly different to this - it measures the acculmulated time difference at the end of each lap between each driver and the driver who eventually finished the last lap in first position. So how do we frame the data in this case? We need to find the cuumlative time at the end of each lap for the eventual first place finisher of the race, and then the delta to this time from the accumumulated time for each driver at the end of each corresponding lap.
+
+
+```{r}
+require(zoo)
+
+lapTimes=lapTimes[order(lapTimes$acctime),]
+#lapTimes$raceLap= if (lapTimes$position==1) lapTimes$lap
+lapTimes$leadLap=mapply(function(x,y) if (x==1) y else NA, lapTimes$position,lapTimes$lap)
+lapTimes$leadLap=na.locf(lapTimes$leadLap)
+lapTimes=lapTimes[order(lapTimes$acctime),]
+lapTimes=ddply(lapTimes,.(leadLap),transform,trackPos=1:length(position))
+```
+
+```{r}
+#number of cars completing each lap as finished by leader (count 2 if unlap?)
+#ddply(lapTimes,.(leadLap),nrow)
+
+In the corresponding chart, if the eventual first place finisher was not in lead posotion at any stage of the race, the lines would show a negative lead time (that is, a "positive" time) ahead of the eventual winner for the laps on which the eventual winner was not in the lead position.
+
+```{r fig.width=7, fig.height=6}
+lapTimes = ddply(lapTimes, .(lap), transform, gap=c(0,diff(acctime)) )
+```
+
+We're now almost in a position to plot a *race history chart*. This sort of chart is widespread in motorsport, and is used to show how the lap times for each driver compare to that of the winner. Again, an averaging method is used, though this time based on the average laptime of the winner taken over the whole of the race.
+
+The 'race history time' for each driver at the end of each lap is given as:
+
+**( (winner mean laptime) * laps ) - (accumulated lap time)**
+
+(If we are plotting the race history chart in real time, we use the accumulated time of the lead car divided by the number of laps completed so far.)
+
+??, on the [Intelligentf1 blog](http://intelligentf1.wordpress.com/the-intelligentf1-model/), describes the race history chart as follows:
+
+  *The horizontal axis is lap number, and the vertical axis shows the time each car is in front of (or behind) a reference average race time. This reference average time is often taken as the race time for the winner, such that the line representing the winner finishes at zero ... . As this reference time is arbitrary, it can be set to different values to best view the race performances of different cars – this has the effect of shifting the lines up and down the graph.*
+
+```{r}
+#Let's fudge a way of identifying the winner. The winner will be the person in position 1
+# at the end of the last (highest counted) lap
+winner = with( lapTimes , lapTimes[lap==max(lapTimes$lap) & position==1,'driverId'][[1]] )
+
+winnerMean = mean( lapTimes[ lapTimes$driverId==winner,'rawtime' ] )
+lapTimes$raceHistory=winnerMean*lapTimes$lap - lapTimes$acctime
+```
+
+Let's see what that looks like:
+
+```{r fig.width=7, fig.height=6}
+
+g=ggplot(lapTimes)
+g=g+geom_line(aes(x=lap,y=raceHistory, group=driverId, colour=driverId))
+g=g+labs(title='Race history chart',x='Lap number', y='Race history time (s)')
+g
+````
+
+

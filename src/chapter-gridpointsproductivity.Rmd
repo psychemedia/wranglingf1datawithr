@@ -1,0 +1,52 @@
+Grid and Qualifying Position Points Productivity
+========================================================
+
+based on football stats book - points per goal
+
+look at points per grid position and points per qualifying position
+
+```{r}
+setwd('~/Dropbox//wranglingf1datawithr/src/')
+require(RSQLite)
+con_ergastdb = dbConnect(drv='SQLite', dbname='./ergastdb13.sqlite')
+tbs=dbGetQuery(con_ergastdb, 'SELECT name FROM sqlite_master WHERE type = "table"')
+tables <- dbListTables(con_ergastdb)
+## exclude sqlite_sequence (contains table information)
+tables <- tables[tables != "sqlite_sequence"]
+lDataFrames <- vector("list", length=length(tables))
+for (i in seq(along=tables)) {
+assign(tables[i],dbGetQuery(conn=con_ergastdb, statement=paste("SELECT * FROM '", tables[[i]], "'", sep="")))
+}
+rr=dbGetQuery(con_ergastdb, 'SELECT rs.grid,rs.points,rs.position,rs.grid-rs.position gridposdelta FROM results rs JOIN races r  WHERE rs.raceId=r.raceId AND r.year>=2010')
+rr['gr']=factor(rr$grid)
+rrp=ddply(rr,.(gr),summarise,m=mean(points))
+
+rrg=ddply(rr[!is.na(rr$position),],.(gr),summarise,m=mean(gridposdelta))
+
+
+require(ggplot2)
+ggplot(rrp[-1,])+geom_point(aes(x=gr,y=m))
+
+ggplot(rrp[-1,],aes(x=gr,y=m,group=1))+geom_point()+stat_smooth(method = "lm", formula = y ~ x+I(x^2))
+
+ggplot(rrg)+geom_point(aes(x=gr,y=m))
+ggplot(rrg,aes(x=gr,y=m,group=1))+geom_point()+stat_smooth(method = "lm", formula = y ~ x+I(x^2))
+
+
+rrpdf=diff(rrp$m)
+rrpdf[-1]
+dfx=data.frame(i=1:length(rrpdf[-1]),d=rrpdf[-1])
+ggplot(dfx)+geom_point(aes(x=i,y=d))
+
+ggplot(dfx,aes(x=i,y=d))+geom_point()+stat_smooth(method = "lm", formula = y ~ x+I(x^2))
+
+```
+
+??also use qualifying pos rather than grid
+
+
+http://en.wikipedia.org/wiki/List_of_Formula_One_World_Championship_points_scoring_systems
+
+
+
+??

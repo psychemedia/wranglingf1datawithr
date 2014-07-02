@@ -1,0 +1,98 @@
+Championship Race and Race History Charts
+=========================================
+
+
+eg http://blog.ouseful.info/2012/11/16/the-race-to-the-f1-2012-drivers-championship/
+
+require(RJSONIO)
+require(ggplot2)
+ 
+#initialise a data frame
+champ <- data.frame(round=numeric(),
+                 driverID=character(), 
+                 position=numeric(), points=numeric(),wins=numeric(),
+                 stringsAsFactors=FALSE)
+ 
+#This is a fudge at the moment - should be able to use a different API call to 
+#get the list of races to date, rather than hardcoding latest round number
+for (j in 1:18){
+  resultsURL=paste("http://ergast.com/api/f1/2012/",j,"/driverStandings",".json",sep='')
+  print(resultsURL)
+  results.data.json=fromJSON(resultsURL,simplify=FALSE)
+  rd=results.data.json$MRData$StandingsTable$StandingsLists[[1]]$DriverStandings
+  for (i in 1:length(rd)){
+    champ=rbind(champ,data.frame(round=j, driverID=rd[[i]]$Driver$driverId,
+                               position=as.numeric(as.character(rd[[i]]$position)),
+                                points=as.numeric(as.character(rd[[i]]$points)),
+                                                  wins=as.numeric(as.character(rd[[i]]$wins)) ))
+  }
+}
+champ
+ 
+#Horrible fudge - should really find a better way of filtering?
+test2=subset(champ,( driverID=='vettel' | driverID=='alonso' | driverID=='raikkonen'|driverID=='webber' | driverID=='hamilton'|driverID=='button' ))
+ 
+#Really rough sketch, in part inspired by http://junkcharts.typepad.com/junk_charts/2012/11/the-electoral-map-sans-the-map.html
+ggplot(test2)+geom_line(aes(x=round,y=points,group=driverID,col=driverID))+labs(title="F1 2012 - Race to the Championship")
+ 
+#I wonder if it would be worth annotating the chart with labels explaining any DNF reasons at parts where points stall?
+
+
+
+
+
+
+
+
+test3=subset(test,( driverID=='vettel' | driverID=='alonso' ))
+test4=subset(test,( driverID=='raikkonen'|driverID=='webber' | driverID=='hamilton'|driverID=='button' ))
+ 
+ggplot(test4) + geom_line(aes(x=round,y=position,group=driverID),col='lightgrey') + geom_line(data=test3,aes(x=round,y=position,group=driverID,col=driverID)) + labs(title="F1 2012 - Race to the Championship")
+
+
+
+
+
+
+ggplot(test4)+geom_line(aes(x=round,y=points,group=driverID),col='lightgrey') + geom_line(data=subset(test3,driverID=='vettel'),aes(x=round,y=points),col='blue') + geom_line(data=subset(test3,driverID=='alonso'),aes(x=round,y=points),col='red') + labs(title="F1 2012 - Race to the Championship")
+
+
+
+
+
+ggplot(test2)+geom_line(aes(x=round,y=position,group=driverID,col=driverID))+labs(title="F1 2012 - Race to the Championship")
+
+
+
+
+ggplot(test4) + geom_line(aes(x=round,y=points,group=driverID),col='lightgrey') + geom_line(data=test3,aes(x=round,y=points,group=driverID,col=driverID)) + labs(title="F1 2012 - Race to the Championship")
+
+
+
+
+
+ggplot(test4) + geom_line(aes(x=round,y=position,group=driverID),col='lightgrey') + geom_line(data=subset(test3,driverID=='vettel'),aes(x=round,y=position),col='blue') + geom_line(data=subset(test3,driverID=='alonso'),aes(x=round,y=position),col='red') + labs(title="F1 2012 - Race to the Championship")
+
+
+
+
+
+library(animation)
+race.ani= function(...) {
+  for (i in 1:18) {
+    g=ggplot(subset(test3, round<=i)) + geom_line(aes(x=round,y=position,group=driverID),col='lightgrey')+geom_line(data=subset(test3,driverID=='vettel' & round<=i),aes(x=round,y=position),col='blue')+geom_line(data=subset(test3,driverID=='alonso' & round <=i),aes(x=round,y=position),col='red')+labs(title="F1 2012 - Race to the Championship")+xlim(1,18)
+    print(g)
+  }
+}
+saveMovie(race.ani(), interval = 0.4, outdir = getwd())
+
+
+
+alo=subset(test3,driverID=='alonso')
+vet=subset(test3,driverID=='vettel')
+colnames(vet)=c("round","driverID","vposition","vpoints","vwins")
+colnames(alo)=c("round","driverID","aposition","apoints","awins")
+cf= merge(alo,vet,by=c('round'))
+ggplot(cf) + geom_bar( aes(x=round,y=vpoints-apoints,fill=(vpoints-apoints)>0), stat='identity') + labs(title="F1 2012 Championship - VET vs ALO")
+
+
