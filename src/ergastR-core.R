@@ -58,6 +58,19 @@ getLapsByYearRace.URL=function(year,raceNum,format='json'){
   paste(API_PATH,year,"/",raceNum,"/laps.",format,"?limit=2500",sep='')
 }
 
+#' Get URL for laps by race-and-year-and-driver
+#' 
+#' \code{getLapsByYearRaceDriver.URL}
+#' @param integer season year 
+#' @param integer race number in year
+#' @param character driver
+#' @param character data format (json, XML)
+#' @return a URL
+getLapsByYearRaceDriver.URL =function(year,raceNum,driverId,format='json'){
+  paste(API_PATH,year,"/",raceNum,"/drivers/",driverId,"/laps.",format,"?limit=2500",sep='')
+}
+
+
 #' Get URL for results by race-and-year
 #' 
 #' \code{getRaceResultsByYearRace.URL}
@@ -77,6 +90,17 @@ getRaceResultsByYearRace.URL=function(year,raceNum,format="json"){
 #' @return a URL
 getDriversByYear.URL=function(year,format='json'){
   paste(API_PATH,year,"/drivers.",format,sep='')
+}
+
+#' Get URL for results by year and driver
+#' 
+#' \code{getDriverResultsByYear.URL}
+#' @param integer season year
+#' @param character driverRef
+#' @param character data format (json, XML)
+#' @return a URL
+getDriverResultsByYear.URL=function(year,driverRef,format='json'){
+  paste(API_PATH,year,"/drivers/",driverRef,"/results.",format,sep='')
 }
 
 ##==========  URL BUILDERS END
@@ -141,18 +165,32 @@ getLapsData.path=function(rd.laps){
   laps.data
 }
 
-#' Generate dataframe containing lap data
+#' Generate dataframe containing lap data for a given race
 #' 
 #' \code{lapsData.df}
 #' @param integer season year for required data
+#' @param integer round number for required data
 #' @param character data format (json, XML)
 #' @return dataframe containing lap data for a specific race
-lapsData.df=function(year,raceNum){
+lapsData.df=function(year,raceNum,format='json'){
   rd.laps=getJSONbyURL(getLapsByYearRace.URL(year,raceNum))
   ld=getLapsData.path(rd.laps)
   formatLapData(ld)
 }
 
+#' Generate dataframe containing lap data for a specified driver
+#' 
+#' \code{lapsDataDriver.df}
+#' @param integer season year for required data
+#' @param integer round number for required data
+#' @param character driverId for specified driver
+#' @param character data format (json, XML)
+#' @return dataframe containing lap data for a specific race
+lapsDataDriver.df=function(year,raceNum,driver,format='json'){
+  rd.laps=getJSONbyURL(getLapsByYearRaceDriver.URL(year,raceNum,driver))
+  ld=getLapsData.path(rd.laps)
+  formatLapData(ld)
+}
 
 #' Get dataframe for races by year
 #' 
@@ -177,7 +215,7 @@ racesData.df=function(year){
   races.data
 }
 
-#' Get dataframe for races by year
+#' Get dataframe for drivers by year
 #' 
 #' \code{driversData.df}
 #' @param integer season year for required data
@@ -201,6 +239,53 @@ driversData.df=function(year){
     ))
   }
   drivers.data
+}
+
+
+#' Get dataframe containing results by driver
+#' 
+#' \code{driverResults.df}
+#' @param integer season year
+#' @param character driverRef reference code for specified driver
+#' @return dataframe containing results data for a particular driver in a particular year
+driverResults.df=function(year,driverRef){
+  drj=getJSONbyURL(getDriverResultsByYear.URL(year,driverRef))
+  drdr=drj$MRData$RaceTable$Races
+  
+  driver.results.data=data.frame(
+    driverId=character(),
+    code=character(),
+    constructorId=character(),
+    grid=numeric(),
+    laps=numeric(),
+    position=numeric(),
+    positionText=character(),
+    points=numeric(),
+    status=character(),
+    season=numeric(),
+    round=numeric()
+  )
+  
+  for (i in 1:length(drdr)){
+    season=as.integer(drdr[[i]]$season)
+    round=as.integer(drdr[[i]]$round)
+    drd=drdr[[i]]$Results[[1]]
+    driver.results.data=rbind(driver.results.data,data.frame(
+      driverId=as.character(drd$Driver$driverId),
+      code=as.character(drd$Driver$code),
+      constructorId=as.character(drd$Constructor$constructorId),
+      grid=as.integer(drd$grid),
+      laps=as.integer(drd$laps),
+      position=as.integer(drd$position),
+      positionText=as.character(drd$positionText),
+      points=as.integer(drd$points),
+      status=as.character(drd$status),
+      season=season,
+      round=round
+    ))
+  }
+  
+  driver.results.data
 }
 
 #' Get dataframe for races by year
