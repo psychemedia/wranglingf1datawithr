@@ -136,6 +136,9 @@ getDriverResultsByYear.URL=function(year,driverRef,format='json'){
 #' @param character URL for data request
 #' @return JSON data from ergast API
 getJSONbyURL=function(URL){
+  #Don't abuse the ergast API
+  Sys.sleep(0.25)
+  
   fromJSON(URL,simplify=FALSE)
 }
 
