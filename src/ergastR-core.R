@@ -74,6 +74,25 @@ getLapsByYearRaceDriver.URL =function(year,raceNum,driverId,format='json'){
   paste(API_PATH,year,"/",raceNum,"/drivers/",driverId,"/laps.",format,"?limit=2500",sep='')
 }
 
+#' Get URL for qualifying
+#' 
+#' \code{getQuali.URL}
+#' @param integer season year
+#' @param integer race number in year
+#' @param character driverRef
+#' @param character data format (json, XML)
+#' @return a URL
+getQuali.URL =function(year=NA,raceNum=NA,driverRef=NA,constructorRef=NA,format='json'){
+  url=paste(API_PATH,sep='')
+  if (!is.na(year)) {
+    url=paste(url,year,'/',sep='')
+    if (!is.na(raceNum)) url=paste(url,raceNum,'/',sep='')
+  }
+  if (!is.na(driverRef)) url=paste(url,'drivers/',driverRef,'/',sep='')
+  if (!is.na(constructorRef)) url=paste(url,'constructors/',constructorRef,'/',sep='')
+  url=paste(url,"qualifying.",format,"?limit=2500",sep='')
+  url
+}
 
 #' Get URL for results by race-and-year
 #' 
@@ -245,6 +264,77 @@ driversData.df=function(year){
   drivers.data
 }
 
+
+#' Parse dataframe containing qualifying results
+#' 
+#' \code{qualiResultsParse.df}
+#' @parameter character url URL of the API call
+#' @return dataframe containing qualifying results
+qualiResultsParse.df=function(url){
+  drj=getJSONbyURL(url)
+  drdr=drj$MRData$RaceTable$Races
+  
+  quali.results.data=data.frame(
+    season=numeric(),
+    round=numeric(),
+    driverId=character(),
+    code=character(),
+    constructorId=character(),
+    position=numeric(),
+    Q1=character(),
+    Q2=character(),
+    Q3=character(),
+    Q1_time=numeric(),
+    Q2_time=numeric(),
+    Q3_time=numeric()
+  )
+    
+  for (i in 1:length(drdr)){
+    season=as.integer(drdr[[i]]$season)
+    round=as.integer(drdr[[i]]$round)
+    
+    for (j in 1:length(drdr[[i]]$QualifyingResults)) {
+      drd=drdr[[i]]$QualifyingResults[[j]]
+      if ("Q1" %in% names(drd)) Q1=as.character(drd$Q1) else Q1=NA
+      if ("Q2" %in% names(drd)) Q2=as.character(drd$Q2) else Q2=NA
+      if ("Q3" %in% names(drd)) Q3=as.character(drd$Q3) else Q3=NA
+      quali.results.data=rbind(quali.results.data,data.frame(
+        driverId=as.character(drd$Driver$driverId),
+        code=as.character(drd$Driver$code),
+        constructorId=as.character(drd$Constructor$constructorId),
+        position=as.integer(drd$position),
+        Q1=Q1,
+        Q2=Q2,
+        Q3=Q3,
+        Q1_time=timeInS(Q1),
+        Q2_time=timeInS(Q2),
+        Q3_time=timeInS(Q3),
+        season=season,
+        round=round
+      ))
+    }
+  }
+  
+  quali.results.data['Q1_rank']=rank(quali.results.data['Q1_time'],na.last='keep')
+  quali.results.data['Q2_rank']=rank(quali.results.data['Q2_time'],na.last='keep')
+  quali.results.data['Q3_rank']=rank(quali.results.data['Q3_time'],na.last='keep')
+  
+  quali.results.data
+}
+
+#' Parse dataframe containing qualifying results
+#' 
+#' \code{qualiResults.df}
+#' @parameter character url URL of the API call
+#' @return dataframe containing qualifying results
+qualiResults.df=function(year=NA,raceNum=NA,driverRef=NA,constructorRef=NA,format='json'){
+  url=getQuali.URL(year=year,
+                   raceNum=raceNum,
+                   driverRef=driverRef,
+                   constructorRef=constructorRef,
+                   format=format)
+  qualiResultsParse.df(url)
+}
 
 #' Get dataframe containing results by driver
 #' 
