@@ -342,7 +342,7 @@ qualiResults.df=function(year=NA,raceNum=NA,driverRef=NA,constructorRef=NA,forma
 #' @param integer season year
 #' @param character driverRef reference code for specified driver
 #' @return dataframe containing results data for a particular driver in a particular year
-driverResults.df=function(year,driverRef){
+driverResults.df=function(year,driverRef=NA){
   drj=getJSONbyURL(getDriverResultsByYear.URL(year,driverRef))
   drdr=drj$MRData$RaceTable$Races
   
