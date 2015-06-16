@@ -21,8 +21,12 @@ getNum=function(x){as.numeric(as.character(x))}
 #' @param string time in format minutes:seconds
 #' @return time in seconds as numeric
 timeInS=function(tStr){
-  x=unlist(strsplit(tStr,':'))
-  tS=60*getNum(x[1])+getNum(x[2])
+  if (is.na(tStr)) tS=NA
+  else {
+    x=unlist(strsplit(tStr,':'))
+    tS=60*getNum(x[1])+getNum(x[2])
+  }
+  tS
 }
 
 
