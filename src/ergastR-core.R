@@ -122,8 +122,11 @@ getDriversByYear.URL=function(year,format='json'){
 #' @param character driverRef
 #' @param character data format (json, XML)
 #' @return a URL
-getDriverResultsByYear.URL=function(year,driverRef,format='json'){
-  paste(API_PATH,year,"/drivers/",driverRef,"/results.",format,sep='')
+getDriverResultsByYear.URL=function(year,driverRef=NA,format='json'){
+  url=paste(API_PATH,year,'/',sep='')
+  if (!is.na(driverRef)) url=paste(url,"drivers/",driverRef,'/',sep='')
+  url=paste(url,"results.",format,"?limit=2500",sep='')
+  url
 }
 
 ##==========  URL BUILDERS END
