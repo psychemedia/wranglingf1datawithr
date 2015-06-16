@@ -487,6 +487,49 @@ driverCareerStandings.df=function(driverId){
   ergast.json.parse.driverStandings.df(dURL)
 }
 
+
+#' Parse JSON driver standings data
+#' 
+#' \code{_constructorStandings.json.parse}
+#' @param integer season year
+#' @param integer race number
+#' @return dataframe containing standings for each year, by race
+ergast.json.parse.constructorStandings.df=function(dURL){
+  drj=getJSONbyURL(dURL)
+  drd=drj$MRData$StandingsTable$StandingsLists
+  constructorStandings.data=data.frame()
+  for (i in 1:length(drd)){
+    constructorStandings=drd[[i]]$ConstructorStandings
+    for (j in 1:length(constructorStandings)){
+      constructorStanding=constructorStandings[[j]]
+      constructorStandings.data=rbind(constructorStandings.data,data.frame(
+        year=getNum(drd[[i]]$season),
+        constructorId=constructorStanding$Constructor$constructorId,
+        pos=getNum(constructorStanding$position),
+        positionText=getNum(constructorStanding$positionText),
+        points=getNum(constructorStanding$points),
+        wins=getNum(constructorStanding$wins),
+        name=constructorStanding$Constructor$name)
+      )
+    }
+  }
+  constructorStandings.data
+}
+
+#' Get dataframe for constructor final standings by year or race
+#' 
+#' \code{constructorStandings.df}
+#' @param character constructorRef
+#' @return dataframe containing standings for each driver at the end of each year
+constructorStandings.df=function(year,race=''){
+  if (race=='')
+    dURL=paste(API_PATH,year,'/constructorStandings.json',sep='')
+  else
+    dURL= paste('http://ergast.com/api/f1/',year,'/',race,'/constructorStandings.json',sep='')
+  
+  ergast.json.parse.constructorStandings.df(dURL)
+}
+
 ##==========  JSON PARSERS END
 
 
