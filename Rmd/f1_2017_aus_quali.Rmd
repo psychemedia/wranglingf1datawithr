@@ -1,0 +1,100 @@
+---
+title: "F1 2017 Australia, Qualifying"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning=FALSE,message=FALSE)
+library(knitr)
+options(knitr.kable.NA = '')
+opts_chunk$set(fig.path = "images/f1_2017_aus-")
+```
+
+```{r}
+library(rvest)
+library(plyr)
+library(ggplot2)
+
+library(f1djR)
+
+qlaps= read.csv("~/Dropbox/various/aus17_qualilaptimes.csv")
+cutoff=c(15,10,2)
+```
+
+```{r}
+##Session classifications page
+xx=pageGrabber('http://www.fia.com/events/fia-formula-one-world-championship/season-2017/session-classifications-19')
+```
+
+```{r}
+library(grid)
+library(gridExtra)
+promoter= function(g) {grid.arrange(g, nrow=1,
+             #top="My title", 
+             bottom = textGrob("To learn how to create this chart: f1datajunkie.com",
+                               gp = gpar(fontface=3, fontsize=9),
+                               hjust=1, x=1))}
+```
+```{r}
+qr=quali_progression_ergast_tx(ergastifyQualiClass(fiaSessionClassQualifyingTidy(fiaTableGrabber(xx,4))))
+qrm=quali_progression_ergast_melt(qr)
+qrtmp=qr
+for (i in c(1,2,3)) {
+
+  qrtmp[[paste0('Q',i)]]=ifelse(is.na(qrtmp[[paste0('Q',i)]]),'',
+                                paste0(qrtmp[[paste0('Q',i)]],' (',qrtmp[[paste0('q',i,'pos')]],')'))
+}
+```
+
+Drivers progressed through the qualifying session as follows:
+```{r quali_slopegraph}
+core_qualifying_rank_slopegraph(qr,qrm,spacer=0.21,reverse=T)
+```
+
+The official session results were recorded as follows:
+```{r}
+kable(subset(qrtmp,select=c('POS','DRIVER','Q1',	'Q2',	'Q3'	)), format='markdown',row.names = FALSE)
+rm(qrtmp)
+```
+
+
+## Session Utilisation
+
+Activity throughout the three qualification sessions took place as follows:
+
+```{r quali_utilisation,fig.width=10}
+#qlapsa=rawLap_augment_laptimes(qlaps)
+qlapsb=rawLap_augment_quali(qlaps)
+qlapsb=qsessionOverride(qlapsb,0,1500,2800)
+qlapsb=quali_purplePatch(qlapsb)
+promoter(augmented_session_utilisation_chart(qlapsb,2,session="F1 AUS 2017, Qualifying"))
+```
+
+Q3 was interrupted by a red flag event.
+
+## Q1 Cut-off Time Evolution
+
+The cut-off time in Q1 evolved as follows:
+
+```{r quali1_cutoff}
+promoter(quali_session_times_plots(qlapsb[qlapsb['qsession']==1,],1,FALSE,FALSE,TRUE,cutoff)+theme_bw())
+```
+
+## Q2 Cut-off Time Evolution
+
+The cut-off time in Q2 evolved as follows:
+
+```{r quali2_cutoff}
+promoter(quali_session_times_plots(qlapsb[qlapsb['qsession']==2,],2,FALSE,FALSE,TRUE,cutoff)+theme_bw())
+```
+
+## Q3 Cut-off Time Evolution
+
+The cut-off time in Q3 evolved as follows:
+
+```{r quali3_cutoff}
+promoter(quali_session_times_plots(qlapsb[qlapsb['qsession']>2,],3,FALSE,FALSE,TRUE,cutoff)+theme_bw())
+```
+
+---
+ To learn how to wrangle F1 results and timing data to create charts like these, see [f1datajunkie.com](https://f1datajunkie.com) or [buy the *Wrangling F1 Data With R* book](https://leanpub.com/wranglingf1datawithr).
