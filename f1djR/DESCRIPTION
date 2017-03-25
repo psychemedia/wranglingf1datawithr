@@ -1,0 +1,10 @@
+Package: f1djR
+Type: Package
+Title: Wrangle F1 Timing And Results Data
+Version: 0.1.0
+Author: Tony Hirst
+Maintainer: Tony Hirst <tony.hirst@gmail.com>
+Description: Package to support "Wrangling F1 Data With R". See: f1datajunkie.com
+License: MIT
+Encoding: UTF-8
+LazyData: true
