@@ -8,3 +8,11 @@ Description: Package to support "Wrangling F1 Data With R". See: f1datajunkie.co
 License: MIT
 Encoding: UTF-8
 LazyData: true
+Depends:
+  dplyr,
+	rvest,
+  plyr,
+  ggplot2
+Imports:
+
+  

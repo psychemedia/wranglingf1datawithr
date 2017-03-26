@@ -1,29 +1,29 @@
 #The list of packages to be loaded
-list.of.packages <- c("RJSONIO","plyr")
+#list.of.packages <- c("RJSONIO","plyr")
 
 #You should be able to simply reuse the following lines of code as is
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(list.of.packages,function(x){library(x,character.only=TRUE)})
+#new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+#if(length(new.packages)) install.packages(new.packages)
+#lapply(list.of.packages,function(x){library(x,character.only=TRUE)})
 
 #Helper functions
 
 #' Convert a string to a numeric
-#' 
+#'
 #' \code{getNum}
 #' @param object item to be converted to a numeric
 #' @return string or factor cast as numeric
 getNum=function(x){as.numeric(as.character(x))}
 
 #' Test whether a driver code exists and if so, return it
-#' 
+#'
 #' \code{driverCodeExists}
 #' @param list item that may or may not contain a code sublist
 #' @return driver code
 driverCodeExists=function(x) {if (is.null(x$code)) return('') else return(x$code)}
 
 #' Generate time in seconds from min:seconds format
-#' 
+#'
 #' \code{timeInS}
 #' @param string time in format minutes:seconds
 #' @return time in seconds as numeric
@@ -53,7 +53,7 @@ API_PATH="http://ergast.com/api/f1/"
 #?include a format adder function?
 
 #' Get URL for races by year
-#' 
+#'
 #' \code{getRacesDataByYear.URL}
 #' @param integer season year for required data
 #' @param character data format (json, XML)
@@ -64,9 +64,9 @@ getRacesDataByYear.URL=function(year,format='json'){
 }
 
 #' Get URL for pits by race-and-year
-#' 
+#'
 #' \code{getPitsByYearRace.URL}
-#' @param integer season year 
+#' @param integer season year
 #' @param integer race number in year
 #' @param character data format (json, XML)
 #' @return a URL
@@ -75,9 +75,9 @@ getPitsByYearRace.URL=function(year,raceNum,format='json'){
 }
 
 #' Get URL for laps by race-and-year
-#' 
+#'
 #' \code{getLapsByYearRace.URL}
-#' @param integer season year 
+#' @param integer season year
 #' @param integer race number in year
 #' @param character data format (json, XML)
 #' @return a URL
@@ -86,9 +86,9 @@ getLapsByYearRace.URL=function(year,raceNum,format='json',offset=0){
 }
 
 #' Get URL for laps by race-and-year-and-driver
-#' 
+#'
 #' \code{getLapsByYearRaceDriver.URL}
-#' @param integer season year 
+#' @param integer season year
 #' @param integer race number in year
 #' @param character driver
 #' @param character data format (json, XML)
@@ -98,7 +98,7 @@ getLapsByYearRaceDriver.URL =function(year,raceNum,driverId,format='json'){
 }
 
 #' Get URL for qualifying
-#' 
+#'
 #' \code{getQuali.URL}
 #' @param integer season year
 #' @param integer race number in year
@@ -118,9 +118,9 @@ getQuali.URL =function(year=NA,raceNum=NA,driverRef=NA,constructorRef=NA,format=
 }
 
 #' Get URL for results by race-and-year
-#' 
+#'
 #' \code{getRaceResultsByYearRace.URL}
-#' @param integer season year 
+#' @param integer season year
 #' @param integer race number in year
 #' @param character data format (json, XML)
 #' @return a URL
@@ -129,7 +129,7 @@ getRaceResultsByYearRace.URL=function(year,raceNum,format="json"){
 }
 
 #' Get URL for results by race-and-year
-#' 
+#'
 #' \code{getDriversByYear.URL}
 #' @param integer season year
 #' @param character data format (json, XML)
@@ -139,7 +139,7 @@ getDriversByYear.URL=function(year,format='json'){
 }
 
 #' Get URL for results by year and driver
-#' 
+#'
 #' \code{getDriverResultsByYear.URL}
 #' @param integer season year
 #' @param character driverRef
@@ -157,14 +157,14 @@ getDriverResultsByYear.URL=function(year,driverRef=NA,format='json'){
 ##==========  JSON GRABBERS
 
 #' Get JSON data
-#' 
+#'
 #' \code{getJSONbyURL}
 #' @param character URL for data request
 #' @return JSON data from ergast API
 getJSONbyURL=function(URL){
   #Don't abuse the ergast API
   Sys.sleep(0.25)
-  
+
   fromJSON(URL,simplify=FALSE)
 }
 
@@ -173,17 +173,17 @@ getJSONbyURL=function(URL){
 ##==========  JSON PARSERS
 
 #' Format laps data
-#' 
+#'
 #' \code{formatLapData}
 #' @param object containing laps data
 #' @return dataframe containing laps data
 formatLapData=function(rd){
   #initialise lapdata frame
   lap.data <- data.frame(lap=numeric(),
-                         driverID=character(), 
+                         driverID=character(),
                          position=numeric(), strtime=character(),rawtime=numeric(),
                          stringsAsFactors=FALSE)
-  
+
   for (i in 1:length(rd)){
     lapNum=getNum(rd[[i]]$number)
     for (j in 1:length(rd[[i]]$Timings)){
@@ -196,19 +196,19 @@ formatLapData=function(rd){
       ))
     }
   }
-  
+
   lap.data=ddply(lap.data,.(driverId),transform,cuml=cumsum(rawtime))
-  
+
   #via http://stackoverflow.com/a/7553300/454773
   lap.data$diff <- ave(lap.data$rawtime, lap.data$driverId, FUN = function(x) c(NA, diff(x)))
-  
+
   #lap.data=ddply(lap.data,.(driverId),transform,decmin=rawtime-min(rawtime))
   #lap.data$topdelta=lap.data$rawtime-min(lap.data$rawtime)
   lap.data
 }
 
 #' Extract Laps data from race data JSON object
-#' 
+#'
 #' \code{getLapsData.path}
 #' @param object containg race data
 #' @return object containing laps data
@@ -218,7 +218,7 @@ getLapsData.path=function(rd.laps){
 }
 
 #' Generate dataframe containing lap data for a given race
-#' 
+#'
 #' \code{lapsData.df}
 #' @param integer season year for required data
 #' @param integer round number for required data
@@ -236,7 +236,7 @@ lapsData.df=function(year,raceNum,format='json'){
 }
 
 #' Generate dataframe containing lap data for a specified driver
-#' 
+#'
 #' \code{lapsDataDriver.df}
 #' @param integer season year for required data
 #' @param integer round number for required data
@@ -251,7 +251,7 @@ lapsDataDriver.df=function(year,raceNum,driver,format='json'){
 
 
 #' Extract and format pits data from JSON object
-#' 
+#'
 #' \code{formatPitsData}
 #' @param object containg race data
 #' @return object containing laps data
@@ -260,12 +260,12 @@ formatPitsData=function(rd.pits){
   pits.data <- data.frame(lap=numeric(),
                          driverID=character(),
                          stopnum=numeric(),
-                         duration=numeric(), 
+                         duration=numeric(),
                          strtime=character(),rawtime=numeric(),
                          strduration=character(),rawduration=numeric(),
                          milliseconds=numeric(),
                          stringsAsFactors=FALSE)
-  
+
   for (i in 1:length(pd)){
     pits.data=rbind(pits.data,data.frame(
       lap=getNum(pd[[i]]$lap),
@@ -280,7 +280,7 @@ formatPitsData=function(rd.pits){
 }
 
 #' Generate dataframe containing pit data for a specified year and round
-#' 
+#'
 #' \code{pitsData.df}
 #' @param integer season year for required data
 #' @param integer round number for required data
@@ -292,7 +292,7 @@ pitsData.df=function(year,raceNum,format='json'){
 }
 
 #' Get dataframe for races by year
-#' 
+#'
 #' \code{racesData.df}
 #' @param integer season year for required data
 #' @return dataframe containing race data for each year
@@ -315,7 +315,7 @@ racesData.df=function(year){
 }
 
 #' Get dataframe for drivers by year
-#' 
+#'
 #' \code{driversData.df}
 #' @param integer season year for required data
 #' @return dataframe containing race data for each year
@@ -329,7 +329,7 @@ driversData.df=function(year){
   for (i in 1:length(drivers)){
     if (is.na(drivers[[i]]['permanentNumber'])) permNumber=NA
     else permNumber=drivers[[i]]['permanentNumber']
-    
+
     drivers.data=rbind(drivers.data,data.frame(
       driverId=drivers[[i]]['driverId'],
       name=drivers[[i]]['familyName'],
@@ -342,14 +342,14 @@ driversData.df=function(year){
 
 
 #' Parse dataframe containing qualifying results
-#' 
+#'
 #' \code{qualiResultsParse.df}
 #' @parameter character url URL of the API call
 #' @return dataframe containing qualifying results
 qualiResultsParse.df=function(url){
   drj=getJSONbyURL(url)
   drdr=drj$MRData$RaceTable$Races
-  
+
   quali.results.data=data.frame(
     season=numeric(),
     round=numeric(),
@@ -364,11 +364,11 @@ qualiResultsParse.df=function(url){
     Q2_time=numeric(),
     Q3_time=numeric()
   )
-    
+
   for (i in 1:length(drdr)){
     season=as.integer(drdr[[i]]$season)
     round=as.integer(drdr[[i]]$round)
-    
+
     for (j in 1:length(drdr[[i]]$QualifyingResults)) {
       drd=drdr[[i]]$QualifyingResults[[j]]
       if ("Q1" %in% names(drd)) Q1=as.character(drd$Q1) else Q1=NA
@@ -390,16 +390,16 @@ qualiResultsParse.df=function(url){
       ))
     }
   }
-  
+
   quali.results.data['Q1_rank']=rank(quali.results.data['Q1_time'],na.last='keep')
   quali.results.data['Q2_rank']=rank(quali.results.data['Q2_time'],na.last='keep')
   quali.results.data['Q3_rank']=rank(quali.results.data['Q3_time'],na.last='keep')
-  
+
   quali.results.data
 }
 
 #' Parse dataframe containing qualifying results
-#' 
+#'
 #' \code{qualiResults.df}
 #' @parameter character url URL of the API call
 #' @return dataframe containing qualifying results
@@ -413,7 +413,7 @@ qualiResults.df=function(year=NA,raceNum=NA,driverRef=NA,constructorRef=NA,forma
 }
 
 #' Get dataframe containing results by driver
-#' 
+#'
 #' \code{driverResults.df}
 #' @param integer season year
 #' @param character driverRef reference code for specified driver
@@ -421,7 +421,7 @@ qualiResults.df=function(year=NA,raceNum=NA,driverRef=NA,constructorRef=NA,forma
 driverResults.df=function(year,driverRef=NA){
   drj=getJSONbyURL(getDriverResultsByYear.URL(year,driverRef))
   drdr=drj$MRData$RaceTable$Races
-  
+
   driver.results.data=data.frame(
     driverId=character(),
     code=character(),
@@ -435,7 +435,7 @@ driverResults.df=function(year,driverRef=NA){
     season=numeric(),
     round=numeric()
   )
-  
+
   for (i in 1:length(drdr)){
     season=as.integer(drdr[[i]]$season)
     round=as.integer(drdr[[i]]$round)
@@ -454,12 +454,12 @@ driverResults.df=function(year,driverRef=NA){
       round=round
     ))
   }
-  
+
   driver.results.data
 }
 
 #' Get dataframe for races by year
-#' 
+#'
 #' \code{resultsData.df}
 #' @param integer season year
 #' @param integer race number in season
@@ -467,7 +467,7 @@ driverResults.df=function(year,driverRef=NA){
 resultsData.df=function(year,raceNum){
   rrj=getJSONbyURL(getRaceResultsByYearRace.URL(year,raceNum))#getRaceResultsData.full(raceNum)
   rrd=rrj$MRData$RaceTable$Races[[1]]$Results
-  
+
   race.results.data=data.frame(
     carNum=numeric(),
     pos=numeric(),
@@ -481,7 +481,7 @@ resultsData.df=function(year,raceNum){
     fastlaptime=character(),
     fastlaprank=numeric()
   )
-  
+
   for (i in 1:length(rrd)){
     race.results.data=rbind(race.results.data,data.frame(
       carNum=as.integer(as.character(rrd[[i]]$number)),
@@ -502,7 +502,7 @@ resultsData.df=function(year,raceNum){
 }
 
 #' Get race winner by season and year
-#' 
+#'
 #' \code{raceWinner}
 #' @param integer season year
 #' @param integer race number
@@ -510,13 +510,13 @@ resultsData.df=function(year,raceNum){
 raceWinner=function(year,raceNum){
   dataPath=paste(year,raceNum,"results","1",sep='/')
   wURL=paste(API_PATH,dataPath,".json",sep='')
-  
+
   wd=fromJSON(wURL,simplify=FALSE)
   wd$MRData$RaceTable$Races[[1]]$Results[[1]]$Driver$driverId
 }
 
 #' Parse JSON driver standings data
-#' 
+#'
 #' \code{_driverStandings.json.parse}
 #' @param integer season year
 #' @param integer race number
@@ -537,14 +537,14 @@ ergast.json.parse.driverStandings.df=function(dURL){
         wins=getNum(drd[[i]]$DriverStandings[[j]]$wins),
         car=drd[[i]]$DriverStandings[[j]]$Constructors[[1]]$constructorId)
       )
-    
+
   }
   driverStandings.data
 }
 
 
 #' Get dataframe for season standings by year
-#' 
+#'
 #' \code{seasonStandings.df}
 #' @param integer season year
 #' @param integer race number
@@ -558,7 +558,7 @@ seasonStandings=function(year,race=''){
 }
 
 #' Get dataframe for individual driver standings by year
-#' 
+#'
 #' \code{driverCareerStandings.df}
 #' @param character driverId
 #' @return dataframe containing standings for each driver at the end of each year
@@ -569,7 +569,7 @@ driverCareerStandings.df=function(driverId){
 
 
 #' Parse JSON driver standings data
-#' 
+#'
 #' \code{_constructorStandings.json.parse}
 #' @param integer season year
 #' @param integer race number
@@ -597,7 +597,7 @@ ergast.json.parse.constructorStandings.df=function(dURL){
 }
 
 #' Get dataframe for constructor final standings by year or race
-#' 
+#'
 #' \code{constructorStandings.df}
 #' @param character constructorRef
 #' @return dataframe containing standings for each driver at the end of each year
@@ -606,7 +606,7 @@ constructorStandings.df=function(year,race=''){
     dURL=paste(API_PATH,year,'/constructorStandings.json',sep='')
   else
     dURL= paste(API_PATH,year,'/',race,'/constructorStandings.json',sep='')
-  
+
   ergast.json.parse.constructorStandings.df(dURL)
 }
 

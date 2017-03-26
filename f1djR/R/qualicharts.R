@@ -1,13 +1,13 @@
 #source('ergastR-core.R')
-library(plyr)
-library(reshape2)
+#library(plyr)
+#library(reshape2)
 
 
 quali_session_times_plots=function(df,session,evolution=TRUE,purple=FALSE,cutoff=FALSE,
                                    cutoffvals=c(15,10,1)){
   #Update this to assume we are doing a specified session
   df['qsession']=session
-  sessionbest=ddply(df[!df['pit'] & !df['outlap'],],
+  sessionbest=plyr::ddply(df[!df['pit'] & !df['outlap'],],
               .(qsession),
               summarise,
               sbest=min(stime),
@@ -18,8 +18,8 @@ quali_session_times_plots=function(df,session,evolution=TRUE,purple=FALSE,cutoff
   if (purple) {
     g=g+geom_line(data=df[df['colourx']=='purple',],aes(x=cuml,y=qpurple),colour='darkgrey')
   }
-  df=ddply(df,.(code,qsession),transform,driverqsbest=min(driverqbest))
-  df=ddply(df,.(qsession),transform,qspurple=min(qpurple))
+  df=plyr::ddply(df,.(code,qsession),transform,driverqsbest=min(driverqbest))
+  df=plyr::ddply(df,.(qsession),transform,qspurple=min(qpurple))
 
    #if (cutoff){
 
@@ -29,7 +29,7 @@ quali_session_times_plots=function(df,session,evolution=TRUE,purple=FALSE,cutoff
     n=cutoffvals[session]
     for (r in 1:nrow(df)) {
       #dfcc=ddply(df[1:r,],.(qsession,code),summarise,dbest=min(stime))
-      dfcc=ddply(df[1:r,],.(code),summarise,dbest=min(stime))
+      dfcc=plyr::ddply(df[1:r,],.(code),summarise,dbest=min(stime))
       #session=df[r,]$qsession
       #dfcc=arrange(dfcc[dfcc['qsession']==session,],dbest)
       dfcc=arrange(dfcc,dbest)
@@ -74,7 +74,7 @@ quali_session_times_plots=function(df,session,evolution=TRUE,purple=FALSE,cutoff
 
   dfx=df
   df=merge(df,dfc,by=c('qsession','code','cuml'))
-  dfdd=ddply(df,.(qsession),summarise,cutoffdbest=min(dbest))
+  dfdd=plyr::ddply(df,.(qsession),summarise,cutoffdbest=min(dbest))
   #df=merge(df,dfdd,by='qsession')
   dfx=merge(dfx,dfdd,by='qsession')
   g=g+geom_text(data=dfx[dfx['stime']==dfx['driverqsbest'] & dfx['driverqsbest']>dfx['cutoffdbest'],],
@@ -174,7 +174,7 @@ quali_progression_ergast_tx=function(qr){
 
   #Rename columns so they work with the original charting function
   #q1time, q2time, q3time,q1pos,q2pos,q3pos,driverName,qspos
-  plyr:::rename(qr, c("Q1_time"="q1time", "Q2_time"="q2time", "Q3_time"="q3time",
+  plyr::rename(qr, c("Q1_time"="q1time", "Q2_time"="q2time", "Q3_time"="q3time",
                   "Q1_rank"="q1pos", "Q2_rank"="q2pos", "Q3_rank"="q3pos",
                   "position"="qspos","code"="driverName"))
 }
@@ -182,13 +182,13 @@ quali_progression_ergast_tx=function(qr){
 quali_progression_ergast_melt=function(qr){
   #Generate qm equivalent by melting elements of qualifying results dataframe
   #driverName, qspos, session (q1time, q2time, q3time)
-  qrm=reshape2:::melt(qr,
+  qrm=reshape2::melt(qr,
            id=c('driverName'),
            measure=c('q1time','q2time','q3time'),
            variable.name='session',
            value.name='laptime')
   qrm$driverName=paste(qrm$driverName," (",qrm$laptime,")",sep='')
-  qrm=ddply(qrm,'session',mutate,qspos=rank(laptime))
+  qrm=plyr::ddply(qrm,'session',plyr::mutate,qspos=rank(laptime))
 
   #Make sure that the laptime values are treated as numeric quantities
   qrm$laptime=as.numeric(qrm$laptime)

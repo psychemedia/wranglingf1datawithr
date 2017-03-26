@@ -1,12 +1,12 @@
 #install.packages("rvest")
-library(rvest)
+#library(rvest)
 #URL of the HTML webpage we want to scrape
 url="http://www.fia.com/events/formula-1-world-championship/season-2015/qualifying-classification"
 
 pageGrabber=function(url,extender=FALSE,path='http://www.fia.com'){
   if (extender) url=paste(path,url,sep='')
   #Grab the page
-  html(url)
+  rvest::html(url)
 }
 
 #USAGE:
@@ -18,7 +18,7 @@ pageGrabber=function(url,extender=FALSE,path='http://www.fia.com'){
 fiaListings=function(url='http://www.fia.com/events/fia-formula-1-world-championship/season-2015/formula-one'){
   html_page=pageGrabber(url)
   #Parse HTML
-  html_page %>% html_nodes(xpath="//div[contains(@class, 'event') and contains(@class, 'cell')]/a") %>% html_attr("href")
+  html_page %>% rvest::html_nodes(xpath="//div[contains(@class, 'event') and contains(@class, 'cell')]/a") %>% html_attr("href")
 }
 
 fiaStubExtender=function(stub,path='http://www.fia.com'){
@@ -28,12 +28,12 @@ fiaStubExtender=function(stub,path='http://www.fia.com'){
 fiaClassificationListing=function(stub){
   html_page=pageGrabber(fiaStubExtender(stub))
   #Parse HTML //*[text()[contains(.,'Session Classifications')]]
-  html_page %>% html_nodes(xpath="//a[text()[contains(.,'Session Classifications')]]") %>% html_attr("href")
+  html_page %>% rvest::html_nodes(xpath="//a[text()[contains(.,'Session Classifications')]]") %>% html_attr("href")
 }
 
 fiaTableGrabber=function(html_page,num){
   #Parse HTML
-  cc=html_nodes(html_page, xpath = "//table")[[num]] %>% html_table(fill=TRUE)
+  cc=rvest::html_nodes(html_page, xpath = "//table")[[num]] %>% rvest::html_table(fill=TRUE)
   #TO DO - extract table name
 
   #Set the column names
@@ -76,7 +76,7 @@ dropNAcol=function(df){
   Filter(function(x)!all(is.na(x)), df)
 }
 
-library(stringr)
+#library(stringr)
 
 #Parse out the time
 timeInS=function(t,basetime=0){

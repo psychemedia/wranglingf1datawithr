@@ -1,5 +1,5 @@
-library(plyr)
-library(ggplot2)
+#library(plyr)
+#library(ggplot2)
 #df <- read.csv("~/Dropbox/wranglingf1datawithr/src/df.csv")
 #df <- read.csv("~/Dropbox/wranglingf1datawithr/src/quali.csv")
 
@@ -21,14 +21,14 @@ driverCode=function(name) unname(driverCodes[name])
 rawLap_augment_laptimes = function(df){
   df['code']=apply(df['name'],2,function(x) driverCode(x))
 
-  df=ddply(df,.(name),transform,cuml=cumsum(stime))
+  df=plyr::ddply(df,.(name),transform,cuml=cumsum(stime))
   df['pit']=df['pit']=='True'
   df=arrange(df,name, -lapNumber)
-  df=ddply(df,.(name),transform,stint=1+sum(pit)-cumsum(pit))
+  df=plyr::ddply(df,.(name),transform,stint=1+sum(pit)-cumsum(pit))
   df=arrange(df,name, lapNumber)
-  df=ddply(df,.(name,stint),transform,lapInStint=1:length(stint))
+  df=plyr::ddply(df,.(name,stint),transform,lapInStint=1:length(stint))
   df=arrange(df,name, lapNumber)
-  df=ddply(df,.(name),transform,driverbest=cummin(c(9999,stime[2:length(stime)])))
+  df=plyr::ddply(df,.(name),transform,driverbest=cummin(c(9999,stime[2:length(stime)])))
   #Need a patch in case there is only an entry time.. ie stime length==1
   #TO DO - another correction to make a singleton time a pit lap
   df=df[!(is.na(df$driverbest)), ]
@@ -40,14 +40,14 @@ rawLap_augment_laptimes = function(df){
                               'green',
                               'black'))
   df=arrange(df,name, lapNumber)
-  df= ddply(df,.(name),transform,outlap=c(FALSE, diff(pit)==-1))
+  df= plyr::ddply(df,.(name),transform,outlap=c(FALSE, diff(pit)==-1))
   df['outlap']= df['outlap'] | df['lapInStint']==1 |  (df['stime'] > 2.0 * min(df['purple']) & (!df['pit']) )
-  df=ddply(df,
+  df=plyr::ddply(df,
            .(name),
            transform,
            stint=cumsum(outlap),
            lapInStint=1:length(stint))
-  df=ddply(df,
+  df=plyr::ddply(df,
            .(name, stint),
            transform,
            lapInStint=1:length(stint))
@@ -76,7 +76,7 @@ plot_session_utilisation_chart = function (df,size=2,session=''){
 }
 
 plot_session_utilisation_chart_toggle_gap=function(df,size=2){
-   df=ddply(df,.(name,stint),transform,diff=c(0,diff(stime)))
+   df=plyr::ddply(df,.(name,stint),transform,diff=c(0,diff(stime)))
    df['coloury']=ifelse(df$colourx=='black',
                                 ifelse(df$diff>=0.0,'red','yellow'),
                                 df$colourx)
@@ -105,7 +105,7 @@ plot_session_utilisation_chart_toggle_gap=function(df,size=2){
  }
 
 plot_session_utilisation_chart_stint_diff=function(df,size=2){
-  df=ddply(df,.(name,stint),mutate,sf=stime[2],sfd=sf-stime)
+  df=plyr::ddply(df,.(name,stint),mutate,sf=stime[2],sfd=sf-stime)
   #sfd is junk in rows 1 and 2 of a stint
   df['colourz']=ifelse(df$colourx=='black',
                                ifelse(df$sfd>=0.0,'red','yellow'),
@@ -138,7 +138,7 @@ augmented_session_utilisation_chart=function(df,size=2,lapcount=TRUE,
                                              gap=TRUE,besttime=TRUE,session=''){
   df=arrange(df,name,lapNumber)
   spurple=min(df['purple'])
-  dfClass=ddply(df[df['driverbest']<9999,],
+  dfClass=plyr::ddply(df[df['driverbest']<9999,],
                 .(name),
                 here(summarise),
                 driverbest=min(driverbest),
@@ -197,7 +197,7 @@ stintFinder=function(df){
   }
 
   stints['name']=factor(stints$name)
-  ddply(stints,.(name),transform,stintNumber=1:length(l))
+  plyr::ddply(stints,.(name),transform,stintNumber=1:length(l))
 }
 
 longrunFinder=function(stints,df,stintlen=8){
@@ -253,9 +253,9 @@ qsessionOverride=function(df,t1start,t2start,t3start){
 #Colour laptimes according to purple/green within separate quali sessions
 quali_purplePatch=function(df){
   df=arrange(df,name, lapNumber)
-  df=ddply(df,.(qsession,name),transform,driverqbest=cummin(c(9999,stime[2:length(stime)])))
+  df=plyr::ddply(df,.(qsession,name),transform,driverqbest=cummin(c(9999,stime[2:length(stime)])))
   df=arrange(df,cuml)
-  df=ddply(df,.(qsession),transform,qpurple=cummin(driverqbest))
+  df=plyr::ddply(df,.(qsession),transform,qpurple=cummin(driverqbest))
   df['colourx']=ifelse(df['stime']==df['qpurple'],
                        'purple',
                        ifelse(df['stime']==df['driverqbest'] & !df['pit'] & !df['outlap'],
